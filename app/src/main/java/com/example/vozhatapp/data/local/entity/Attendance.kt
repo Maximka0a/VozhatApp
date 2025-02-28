@@ -5,7 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
-import java.util.Date
 
 @Entity(
     tableName = "attendance",
@@ -33,20 +32,14 @@ data class Attendance(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
 
-    // В DAO используется "eventId" как имя столбца
     val eventId: Long,
-
-    // В DAO используется "childId" как имя столбца
     val childId: Long,
-
-    // В DAO используется "isPresent" как имя столбца
     val isPresent: Boolean = true,
-
     val note: String? = null,
 
     @ColumnInfo(name = "marked_by")
     val markedBy: Long? = null,
 
     @ColumnInfo(name = "marked_at")
-    val markedAt: Date = Date()
+    val markedAt: Long = System.currentTimeMillis()
 )

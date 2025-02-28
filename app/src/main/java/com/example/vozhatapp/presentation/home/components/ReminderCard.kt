@@ -31,7 +31,7 @@ import java.util.Calendar
 @Composable
 fun ReminderCard(reminder: ReminderItem) {
     val calendar = Calendar.getInstance()
-    calendar.time = reminder.date
+    calendar.timeInMillis = reminder.date  // Используем timeInMillis вместо time
     val hour = calendar.get(Calendar.HOUR_OF_DAY)
     val minute = calendar.get(Calendar.MINUTE)
     val timeFormatted = String.format("%02d:%02d", hour, minute)

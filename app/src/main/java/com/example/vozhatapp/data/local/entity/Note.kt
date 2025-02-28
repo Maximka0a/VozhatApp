@@ -5,7 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
-import java.util.Date
 
 @Entity(
     tableName = "notes",
@@ -27,6 +26,6 @@ data class Note(
     @ColumnInfo(name = "child_id") val childId: Long? = null,
     // Тип: 0 - обычная заметка, 1 - напоминание
     val type: Int = 0,
-    @ColumnInfo(name = "reminder_date") val reminderDate: Date? = null,
-    @ColumnInfo(name = "created_at") val createdAt: Date = Date()
+    @ColumnInfo(name = "reminder_date") val reminderDate: Long? = null,
+    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

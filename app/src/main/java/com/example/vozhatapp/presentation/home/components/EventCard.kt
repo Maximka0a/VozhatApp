@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.vozhatapp.data.local.entity.Event
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 
@@ -35,18 +36,18 @@ fun EventCard(
     onClick: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val startTime = remember(event.startTime) { dateFormatter.format(event.startTime) }
-    val endTime = remember(event.endTime) { dateFormatter.format(event.endTime) }
+    val startTime = remember(event.startTime) { dateFormatter.format(Date(event.startTime)) }
+    val endTime = remember(event.endTime) { dateFormatter.format(Date(event.endTime)) }
     val currentTime = remember { System.currentTimeMillis() }
-    val isActive = currentTime in event.startTime.time..event.endTime.time
+    val isActive = currentTime in event.startTime..event.endTime
 
-    val progress = if (currentTime < event.startTime.time) {
+    val progress = if (currentTime < event.startTime) {
         0f
-    } else if (currentTime > event.endTime.time) {
+    } else if (currentTime > event.endTime) {
         1f
     } else {
-        val total = event.endTime.time - event.startTime.time
-        val elapsed = currentTime - event.startTime.time
+        val total = event.endTime - event.startTime
+        val elapsed = currentTime - event.startTime
         (elapsed.toFloat() / total).coerceIn(0f, 1f)
     }
 

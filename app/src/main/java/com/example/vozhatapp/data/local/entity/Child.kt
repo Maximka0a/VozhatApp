@@ -3,7 +3,6 @@ package com.example.vozhatapp.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
-import java.util.Date
 
 @Entity(tableName = "children")
 data class Child(
@@ -17,5 +16,5 @@ data class Child(
     @ColumnInfo(name = "parent_email") val parentEmail: String? = null,
     val address: String? = null,
     @ColumnInfo(name = "medical_notes") val medicalNotes: String? = null,
-    @ColumnInfo(name = "created_at") val createdAt: Date = Date()
+    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

@@ -31,13 +31,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.vozhatapp.data.local.entity.Child
+import com.example.vozhatapp.presentation.home.model.ChildRankingItem
 import com.example.vozhatapp.ui.theme.VozhatAppTheme
-
 
 @Composable
 fun ChildAchievementCard(
-    child: Child,
+    childRanking: ChildRankingItem,
     rank: Int,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -99,17 +98,17 @@ fun ChildAchievementCard(
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (child.photoUrl != null) {
+                    if (childRanking.photoUrl != null) {
                         AsyncImage(
-                            model = child.photoUrl,
-                            contentDescription = "Фото ${child.name}",
+                            model = childRanking.photoUrl,
+                            contentDescription = "Фото ${childRanking.name}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = "Фото ${child.name}",
+                            contentDescription = "Фото ${childRanking.name}",
                             modifier = Modifier.size(40.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -119,7 +118,7 @@ fun ChildAchievementCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "${child.name} ${child.lastName}",
+                    text = "${childRanking.name} ${childRanking.lastName}",
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -128,14 +127,14 @@ fun ChildAchievementCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = child.squadName,
+                    text = childRanking.squadName,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Количество баллов (заглушка)
+                // Количество баллов (реальные данные)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
@@ -155,7 +154,7 @@ fun ChildAchievementCard(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = "${150 - (rank - 1) * 15} баллов", // Заглушка для демонстрации
+                        text = "${childRanking.points} баллов",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

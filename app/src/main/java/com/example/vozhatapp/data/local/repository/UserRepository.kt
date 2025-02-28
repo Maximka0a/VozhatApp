@@ -5,7 +5,6 @@ import com.example.vozhatapp.data.local.entity.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,7 +38,7 @@ class UserRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             val user = userDao.getUserByIdSync(userId)
             user?.let {
-                userDao.updateUser(it.copy(lastLogin = Date()))
+                userDao.updateUser(it.copy(lastLogin = System.currentTimeMillis()))
             }
         }
     }

@@ -2,10 +2,10 @@ package com.example.vozhatapp.data.repository
 
 import com.example.vozhatapp.data.local.dao.NoteDao
 import com.example.vozhatapp.data.local.entity.Note
+import com.example.vozhatapp.utils.DateUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,8 +21,11 @@ class NoteRepository @Inject constructor(
         return noteDao.getNotesForChild(childId)
     }
 
-    fun getUpcomingReminders(): Flow<List<Note>> {
-        return noteDao.getUpcomingReminders(Date())
+    fun getTodayReminders(): Flow<List<Note>> {
+        val currentTimeMillis = System.currentTimeMillis()
+        val startOfDay = DateUtils.getStartOfDay(currentTimeMillis)
+        val endOfDay = DateUtils.getEndOfDay(currentTimeMillis)
+        return noteDao.getTodayReminders(startOfDay, endOfDay)
     }
 
     suspend fun insertNote(note: Note): Long {

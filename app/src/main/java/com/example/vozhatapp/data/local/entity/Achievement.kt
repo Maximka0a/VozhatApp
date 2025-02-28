@@ -25,5 +25,5 @@ data class Achievement(
     val title: String,
     val description: String? = null,
     val points: Int = 0,
-    val date: Date = Date()
+    val date: Long = System.currentTimeMillis()
 )

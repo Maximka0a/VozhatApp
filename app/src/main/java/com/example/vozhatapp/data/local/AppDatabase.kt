@@ -18,7 +18,7 @@ import com.example.vozhatapp.data.local.entity.*
         Note::class,
         Game::class
     ],
-    version = 1,
+    version = 2, // Увеличиваем версию базы данных
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -45,7 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "vozhat_app_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // Используем деструктивную миграцию
                     .build()
                 INSTANCE = instance
                 instance

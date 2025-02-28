@@ -20,15 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import com.example.vozhatapp.data.local.entity.Child
 import com.example.vozhatapp.presentation.home.common.EmptyStateItem
 import com.example.vozhatapp.presentation.home.common.SectionWithTitle
+import com.example.vozhatapp.presentation.home.model.ChildRankingItem
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun TopChildrenSection(
-    children: List<Child>,
+    children: List<ChildRankingItem>,
     onChildClick: (Long) -> Unit
 ) {
     SectionWithTitle(
@@ -45,8 +44,8 @@ fun TopChildrenSection(
             ) {
                 EmptyStateItem(
                     icon = Icons.Outlined.People,
-                    message = "Список детей пуст",
-                    actionText = "Добавить ребенка",
+                    message = "Список достижений пуст",
+                    actionText = "Добавить достижение",
                     onActionClick = {}
                 )
             }
@@ -61,7 +60,7 @@ fun TopChildrenSection(
                     ),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(children) { index, child ->
+                    itemsIndexed(children) { index, childRanking ->
                         val offset = remember { Animatable(200f) }
                         val alpha = remember { Animatable(0f) }
 
@@ -85,14 +84,14 @@ fun TopChildrenSection(
                         }
 
                         ChildAchievementCard(
-                            child = child,
+                            childRanking = childRanking,
                             rank = index + 1,
                             modifier = Modifier
                                 .graphicsLayer {
                                     translationY = offset.value
                                     this.alpha = alpha.value
                                 },
-                            onClick = { onChildClick(child.id) }
+                            onClick = { onChildClick(childRanking.id) }
                         )
                     }
                 }
