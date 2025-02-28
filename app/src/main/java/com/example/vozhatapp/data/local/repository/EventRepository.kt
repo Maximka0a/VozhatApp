@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.Date
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,9 +24,32 @@ class EventRepository @Inject constructor(
     val allEvents: Flow<List<Event>> = eventDao.getAllEvents()
 
     fun getEventsForDay(date: Date): Flow<List<Event>> {
-        Log.d("EventRepository", "Запрос событий на день: $date")
-        return eventDao.getEventsForDay(date).map { events ->
-            Log.d("EventRepository", "Получено событий: ${events.size}")
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+
+        // Начало дня (00:00:00)
+        val startOfDay = Calendar.getInstance().apply {
+            setTime(date)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+
+        // Конец дня (23:59:59.999)
+        val endOfDay = Calendar.getInstance().apply {
+            setTime(date)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.time
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        Log.d("EventRepository", "Поиск событий с ${sdf.format(startOfDay)} по ${sdf.format(endOfDay)}")
+
+        return eventDao.getEventsForDay(startOfDay, endOfDay).map { events ->
+            Log.d("EventRepository", "Найдено событий за день: ${events.size}")
             events
         }
     }
@@ -37,9 +63,14 @@ class EventRepository @Inject constructor(
     }
 
     fun getEventsByDateRange(startDate: Date, endDate: Date): Flow<List<Event>> {
-        Log.d("EventRepository", "Запрос событий в диапазоне: $startDate - $endDate")
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        Log.d("EventRepository", "Поиск событий с ${sdf.format(startDate)} по ${sdf.format(endDate)}")
+
         return eventDao.getEventsByDateRange(startDate, endDate).map { events ->
-            Log.d("EventRepository", "Получено событий в диапазоне: ${events.size}")
+            Log.d("EventRepository", "Найдено событий в диапазоне: ${events.size}")
+            for (event in events) {
+                Log.d("EventRepository", "Событие: ${event.id}, ${event.title}, ${sdf.format(event.startTime)}")
+            }
             events
         }
     }

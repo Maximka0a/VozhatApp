@@ -118,6 +118,7 @@ val LocalAppExtendedColors = staticCompositionLocalOf {
     )
 }
 
+@Suppress("DEPRECATION")
 @Composable
 fun VozhatAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

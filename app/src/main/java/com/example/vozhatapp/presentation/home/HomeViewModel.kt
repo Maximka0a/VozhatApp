@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import android.util.Log
+import com.example.vozhatapp.presentation.home.model.ReminderItem
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -30,57 +31,13 @@ class HomeViewModel @Inject constructor(
         loadData()
     }
 
-    private fun createTestEvents(): List<Event> {
-        val currentTime = System.currentTimeMillis()
-
-        return listOf(
-            Event(
-                id = 101,
-                title = "Утренняя зарядка",
-                description = "Общая зарядка для всех отрядов",
-                startTime = Date(currentTime - 30 * 60 * 1000), // 30 минут назад
-                endTime = Date(currentTime + 15 * 60 * 1000), // 15 минут вперед
-                location = "Спортивная площадка",
-                status = 1, // В процессе
-                createdBy = 4,
-                createdAt = Date(currentTime - 24 * 60 * 60 * 1000) // Создано вчера
-            ),
-            Event(
-                id = 102,
-                title = "Завтрак",
-                description = "Общий завтрак для всех отрядов",
-                startTime = Date(currentTime + 30 * 60 * 1000), // Через 30 минут
-                endTime = Date(currentTime + 90 * 60 * 1000), // Через 1.5 часа
-                location = "Столовая",
-                status = 0, // Предстоит
-                createdBy = 4,
-                createdAt = Date(currentTime - 24 * 60 * 60 * 1000) // Создано вчера
-            ),
-            Event(
-                id = 103,
-                title = "Творческий мастер-класс",
-                description = "Рисование на камнях и создание поделок из природных материалов",
-                startTime = Date(currentTime + 180 * 60 * 1000), // Через 3 часа
-                endTime = Date(currentTime + 270 * 60 * 1000), // Через 4.5 часа
-                location = "Творческая мастерская",
-                status = 0, // Предстоит
-                createdBy = 4,
-                createdAt = Date(currentTime - 24 * 60 * 60 * 1000) // Создано вчера
-            )
-        )
-    }
-
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Сначала загружаем тестовые события для быстрого отображения интерфейса
-            val testEvents = createTestEvents()
-            _uiState.update { it.copy(todayEvents = testEvents) }
-
             try {
                 // Получаем текущую системную дату
-                val calendar = Calendar.getInstance()
+                val currentDate = Date()
 
                 // Начало текущего дня (00:00:00)
                 val todayStart = Calendar.getInstance().apply {
@@ -99,25 +56,32 @@ class HomeViewModel @Inject constructor(
                 }.time
 
                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                Log.d("HomeViewModel", "Текущая дата: ${sdf.format(Date())}")
+                Log.d("HomeViewModel", "Текущая дата: ${sdf.format(currentDate)}")
                 Log.d("HomeViewModel", "Загрузка событий с ${sdf.format(todayStart)} по ${sdf.format(todayEnd)}")
 
-                // Загружаем события на текущий день
-                eventRepository.getEventsByDateRange(todayStart, todayEnd).collect { dbEvents ->
-                    Log.d("HomeViewModel", "Получено из базы данных: ${dbEvents.size} событий")
-                    if (dbEvents.isNotEmpty()) {
-                        // Если в БД есть события на текущий день, используем их
-                        _uiState.update { it.copy(todayEvents = dbEvents) }
-                    } else {
-                        // Если событий в БД нет, используем тестовые события
-                        Log.d("HomeViewModel", "Используем тестовые события, так как в БД ничего не найдено")
-                        _uiState.update { it.copy(todayEvents = testEvents) }
+                // Вывести содержимое всей таблицы событий для отладки
+                eventRepository.allEvents.collect { allEvents ->
+                    Log.d("HomeViewModel", "Всего событий в базе: ${allEvents.size}")
+                    for (event in allEvents) {
+                        Log.d("HomeViewModel", "Событие в БД: ${event.id}, ${event.title}, ${sdf.format(event.startTime)}")
                     }
+
+                    // Фильтруем события на текущий день вручную
+                    val todayEvents = allEvents.filter { event ->
+                        val eventTime = event.startTime.time
+                        val isToday = eventTime >= todayStart.time && eventTime <= todayEnd.time
+                        Log.d("HomeViewModel", "Событие ${event.title} (${sdf.format(event.startTime)}) сегодня? $isToday")
+                        isToday
+                    }
+
+                    Log.d("HomeViewModel", "Отфильтровано событий на сегодня: ${todayEvents.size}")
+
+                    _uiState.update { it.copy(todayEvents = todayEvents, isLoading = false) }
                 }
             } catch (e: Exception) {
-                // В случае ошибки используем тестовые события
+                // В случае ошибки логируем ее
                 Log.e("HomeViewModel", "Ошибка при загрузке событий: ${e.message}", e)
-                _uiState.update { it.copy(todayEvents = testEvents) }
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
 
@@ -145,9 +109,14 @@ class HomeViewModel @Inject constructor(
                         date = note.reminderDate ?: Date()
                     )
                 }
-                _uiState.update { it.copy(upcomingReminders = reminders, isLoading = false) }
+                _uiState.update { it.copy(upcomingReminders = reminders) }
             }
         }
+    }
+
+    // Метод для ручного обновления данных
+    fun refresh() {
+        loadData()
     }
 }
 
@@ -158,9 +127,3 @@ data class HomeUiState(
     val upcomingReminders: List<ReminderItem> = emptyList()
 )
 
-data class ReminderItem(
-    val id: Long,
-    val title: String,
-    val description: String,
-    val date: Date
-)

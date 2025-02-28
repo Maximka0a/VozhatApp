@@ -10,12 +10,16 @@ interface EventDao {
     @Query("SELECT * FROM events ORDER BY start_time ASC")
     fun getAllEvents(): Flow<List<Event>>
 
-    @Query("SELECT * FROM events WHERE date(start_time/1000, 'unixepoch', 'localtime') = date(:date/1000, 'unixepoch', 'localtime') ORDER BY start_time ASC")
+    // Исправляем запрос для корректного поиска событий за день
+    @Query("SELECT * FROM events WHERE start_time >= :startOfDay AND start_time <= :endOfDay ORDER BY start_time ASC")
+    fun getEventsForDay(startOfDay: Date, endOfDay: Date): Flow<List<Event>>
+
+    // Для обратной совместимости
+    @Query("SELECT * FROM events WHERE start_time >= :date AND start_time <= :date + 86400000 ORDER BY start_time ASC")
     fun getEventsForDay(date: Date): Flow<List<Event>>
 
     @Query("SELECT * FROM events WHERE id = :eventId")
     fun getEventById(eventId: Long): Flow<Event?>
-
 
     @Query("SELECT * FROM events WHERE start_time >= :startDate AND start_time <= :endDate ORDER BY start_time ASC")
     fun getEventsByDateRange(startDate: Date, endDate: Date): Flow<List<Event>>
