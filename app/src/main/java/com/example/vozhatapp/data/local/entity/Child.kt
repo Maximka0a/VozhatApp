@@ -17,4 +17,10 @@ data class Child(
     val address: String? = null,
     @ColumnInfo(name = "medical_notes") val medicalNotes: String? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    val fullName: String
+        get() = "$name $lastName"
+
+    val hasMedicalNotes: Boolean
+        get() = !medicalNotes.isNullOrBlank()
+}

@@ -9,6 +9,9 @@ import com.example.vozhatapp.presentation.home.HomeScreen
 import com.example.vozhatapp.ui.theme.VozhatAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 import android.os.SystemClock
+import com.example.vozhatapp.presentation.childprofile.ChildProfileScreen
+import com.example.vozhatapp.presentation.children.AddChildScreen
+import com.example.vozhatapp.presentation.children.ChildrenListScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -22,11 +25,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             VozhatAppTheme {
                 HomeScreen(
-                    onNavigateToEvents = {},
-                    onNavigateToChildren = {},
-                    onNavigateToGames = {},
-                    onNavigateToProfile = {},
-                    onNavigateToChildDetails = {},
+                    onNavigateToEvents = { TODO() },
+                    onNavigateToChildren = { TODO() },
+                    onNavigateToGames = { TODO() },
+                    onNavigateToProfile = { TODO() },
+                    onNavigateToChildDetails = { TODO() },
                     onNavigateToEventDetails = {},
                 )
             }

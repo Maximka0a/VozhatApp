@@ -1,3 +1,96 @@
 <resources>
     <string name="app_name">VozhatApp</string>
+
+    <!-- Navigation and common actions -->
+    <string name="navigate_back">Назад</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="delete">Удалить</string>
+    <string name="close">Закрыть</string>
+
+    <!-- Children list screen -->
+    <string name="children_list_title">Список детей</string>
+    <string name="add_child">Добавить ребенка</string>
+    <string name="search_children_hint">Поиск по имени…</string>
+    <string name="filter_by_squad">Фильтр по отряду</string>
+    <string name="all_squads">Все отряды</string>
+    <string name="no_children_found">Нет детей в списке</string>
+    <string name="no_children_search_results">Ничего не найдено</string>
+    <string name="children_count_template">Показано %1$d из %2$d</string>
+    <string name="has_special_notes">Имеются медицинские заметки</string>
+    <string name="age_years_template">%1$d лет</string>
+
+    <!-- Add/edit child screen -->
+    <string name="edit_child">Редактировать данные ребенка</string>
+    <string name="save_child">Сохранить данные</string>
+    <string name="basic_info">Основная информация</string>
+    <string name="contact_info">Контактная информация</string>
+    <string name="medical_information">Медицинская информация</string>
+
+    <!-- Child information fields -->
+    <string name="name">Имя</string>
+    <string name="last_name">Фамилия</string>
+    <string name="age">Возраст</string>
+    <string name="squad">Отряд</string>
+    <string name="add_new_squad">Добавить новый отряд</string>
+    <string name="parent_phone">Телефон родителя</string>
+    <string name="parent_email">Email родителя</string>
+    <string name="address">Адрес</string>
+    <string name="medical_notes">Медицинские заметки</string>
+    <string name="optional">Необязательно</string>
+
+    <!-- Photo handling -->
+    <string name="add_photo">Добавить фото</string>
+    <string name="clear_photo">Удалить фото</string>
+    <string name="photo_optional">Фото не обязательно</string>
+
+    <!-- Form validation and error messages -->
+    <string name="field_required">Это поле обязательно</string>
+    <string name="valid_age_required">Укажите корректный возраст</string>
+    <string name="valid_email_required">Укажите корректный email</string>
+    <string name="valid_phone_required">Укажите корректный телефон</string>
+    <string name="contact_required">Укажите хотя бы один способ связи с родителями</string>
+
+    <!-- Help text and instructions -->
+    <string name="medical_notes_info">Укажите информацию об аллергиях, хронических заболеваниях, особых потребностях или необходимых лекарствах.</string>
+    <string name="fill_required_fields">Пожалуйста, заполните обязательные поля</string>
+
+    <!-- Success and error messages -->
+    <string name="child_added_success">Ребенок успешно добавлен</string>
+    <string name="child_updated_success">Данные успешно обновлены</string>
+    <string name="error_saving_data">Ошибка при сохранении данных</string>
+    <string name="error_loading_data">Ошибка при загрузке данных</string>
+    <string name="update_child">Обновить данные</string>
+    <string name="delete_child">Удалить ребенка</string>
+    <string name="delete_child_title">Удаление ребенка</string>
+    <string name="delete_child_confirmation">Вы уверены, что хотите удалить %s из системы? Это действие нельзя отменить.</string>
+
+    <!-- Child profile screen -->
+    <string name="child_profile">Профиль ребенка</string>
+    <string name="edit_profile">Редактировать профиль</string>
+    <string name="contact_parent">Связаться с родителем</string>
+    <string name="personal_info">Личная информация</string>
+
+    <!-- User information -->
+    <string name="current_user">Текущий пользователь</string>
+    <string name="settings">Настройки</string>
+    <string name="logout">Выйти</string>
+
+    <!-- Date and time formats -->
+    <string name="date_format">dd.MM.yyyy</string>
+    <string name="time_format">HH:mm</string>
+    <string name="datetime_format">dd.MM.yyyy HH:mm</string>
+
+    <!-- Squad management -->
+    <string name="create_squad">Создать отряд</string>
+    <string name="edit_squad">Редактировать отряд</string>
+    <string name="squad_description">Описание отряда</string>
+    <string name="assign_to_squad">Назначить в отряд</string>
+    <string name="children_in_squad">Детей в отряде: %1$d</string>
+
+    <!-- Add these to your strings.xml file -->
+    <string name="squad_name">Название отряда</string>
+    <string name="add">Добавить</string>
+    <string name="squad_name_required">Название отряда обязательно</string>
+    <string name="squad_name_exists">Отряд с таким названием уже существует</string>
 </resources>

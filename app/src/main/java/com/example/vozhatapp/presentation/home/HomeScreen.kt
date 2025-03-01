@@ -51,7 +51,6 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-
     Log.d("123", uiState.todayEvents.toString())
 
     val snackbarHostState = remember { SnackbarHostState() }
