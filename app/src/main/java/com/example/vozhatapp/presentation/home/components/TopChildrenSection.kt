@@ -1,40 +1,50 @@
 package com.example.vozhatapp.presentation.home.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.vozhatapp.presentation.home.common.EmptyStateItem
-import com.example.vozhatapp.presentation.home.common.SectionWithTitle
 import com.example.vozhatapp.presentation.home.model.ChildRankingItem
-import kotlinx.coroutines.launch
 
 @Composable
 fun TopChildrenSection(
     children: List<ChildRankingItem>,
-    onChildClick: (Long) -> Unit
+    onChildClick: (Long) -> Unit,
+    onSeeAllClick: () -> Unit
 ) {
-    SectionWithTitle(
-        title = "Топ достижений",
-        showSeeAllButton = children.size > 5,
-        onSeeAllClick = {}
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Топ достижений",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            TextButton(onClick = onSeeAllClick) {
+                Text("Все дети")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (children.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -43,57 +53,20 @@ fun TopChildrenSection(
                 contentAlignment = Alignment.Center
             ) {
                 EmptyStateItem(
-                    icon = Icons.Outlined.People,
-                    message = "Список достижений пуст",
-                    actionText = "Добавить достижение",
-                    onActionClick = {}
+                    icon = Icons.Outlined.EmojiEvents,
+                    message = "Нет данных о достижениях"
                 )
             }
         } else {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LazyRow(
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 8.dp,
-                        bottom = 16.dp
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(children) { index, childRanking ->
-                        val offset = remember { Animatable(200f) }
-                        val alpha = remember { Animatable(0f) }
-
-                        LaunchedEffect(key1 = Unit) {
-                            kotlinx.coroutines.delay(index * 100L)
-                            launch {
-                                offset.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    )
-                                )
-                            }
-                            launch {
-                                alpha.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(durationMillis = 500)
-                                )
-                            }
-                        }
-
-                        ChildAchievementCard(
-                            childRanking = childRanking,
-                            rank = index + 1,
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    translationY = offset.value
-                                    this.alpha = alpha.value
-                                },
-                            onClick = { onChildClick(childRanking.id) }
-                        )
-                    }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(children) { child ->
+                    ChildAchievementCardImproved(
+                        child = child,
+                        onClick = { onChildClick(child.id) }
+                    )
                 }
             }
         }

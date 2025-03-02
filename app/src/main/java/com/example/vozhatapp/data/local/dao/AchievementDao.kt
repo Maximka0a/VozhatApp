@@ -10,8 +10,7 @@ interface AchievementDao {
     fun getAchievementsForChild(childId: Long): Flow<List<Achievement>>
 
     @Query("""
-        SELECT c.id, c.name, c.lastName, c.squadName, 
-        SUM(a.points) AS totalPoints
+    SELECT c.id, c.name, c.lastName, c.squadName, c.photo_url, SUM(a.points) as totalPoints 
         FROM children c
         LEFT JOIN achievements a ON c.id = a.child_id
         GROUP BY c.id
@@ -33,6 +32,7 @@ interface AchievementDao {
         val name: String,
         val lastName: String,
         val squadName: String,
-        val totalPoints: Int?
+        val totalPoints: Int?,
+        val photoUrl: String? // Добавленное поле
     )
 }

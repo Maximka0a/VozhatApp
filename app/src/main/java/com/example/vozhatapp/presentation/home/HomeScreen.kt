@@ -1,162 +1,75 @@
 package com.example.vozhatapp.presentation.home
 
-import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import android.widget.Toast
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.vozhatapp.presentation.home.common.WelcomeAnimation
-import com.example.vozhatapp.presentation.home.components.HomeContent
-import com.example.vozhatapp.presentation.home.components.HomeTopBar
+import com.example.vozhatapp.presentation.home.components.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToEvents: () -> Unit,
     onNavigateToChildren: () -> Unit,
     onNavigateToGames: () -> Unit,
-    onNavigateToProfile: () -> Unit,
     onNavigateToAttendance: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onNavigateToChildDetails: (Long) -> Unit,
     onNavigateToEventDetails: (Long) -> Unit,
+    onNavigateToNoteDetails: (Long) -> Unit,  // Добавлен новый параметр
+    onCreateNewEvent: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val homeScreenTopBarState = rememberHomeScreenTopBarState()
-    val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
-
-    Log.d("123", uiState.todayEvents.toString())
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // Анимация появления контента
-    val contentAlpha = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        contentAlpha.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 1000)
-        )
-    }
-
-    var showWelcomeAnimation by remember { mutableStateOf(true) }
-    LaunchedEffect(key1 = Unit) {
-        // После 2 секунд скрываем приветственную анимацию
-        kotlinx.coroutines.delay(2000)
-        showWelcomeAnimation = false
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            HomeTopBar(
-                scrollState = scrollState,
-                topBarState = homeScreenTopBarState,
-                onSearchClick = { scope.launch { snackbarHostState.showSnackbar("Поиск") } },
-                onProfileClick = onNavigateToProfile
+            HomeTopAppBar(
+                scrollBehavior = scrollBehavior,
+                onMenuClick = { onNavigateToSettings() },
+                onRefresh = { viewModel.loadData() }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = !showWelcomeAnimation,
-                enter = scaleIn() + fadeIn(),
-                exit = scaleOut() + fadeOut()
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Создать новое событие")
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Создать"
-                    )
-                }
-            }
+            ExtendedFloatingActionButton(
+                onClick = { onCreateNewEvent() },
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("Создать событие") },
+                expanded = scrollBehavior.state.collapsedFraction < 0.5
+            )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Полноэкранная приветственная анимация
-            AnimatedVisibility(
-                visible = showWelcomeAnimation,
-                enter = fadeIn(),
-                exit = fadeOut(animationSpec = tween(durationMillis = 500))
-            ) {
-                WelcomeAnimation(
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        HomeScreenContent(
+            modifier = Modifier.padding(paddingValues),
+            uiState = uiState,
+            onRefresh = { viewModel.loadData() },
+            onNavigateToEvents = onNavigateToEvents,
+            onNavigateToChildren = onNavigateToChildren,
+            onNavigateToGames = onNavigateToGames,
+            onNavigateToAttendance = onNavigateToAttendance,
+            onNavigateToNotes = onNavigateToNotes,
+            onNavigateToAnalytics = onNavigateToAnalytics,
+            onNavigateToChildDetails = onNavigateToChildDetails,
+            onNavigateToEventDetails = onNavigateToEventDetails,
+            onNavigateToNoteDetails = onNavigateToNoteDetails  // Передаем навигацию
+        )
 
-            // Основной контент
-            AnimatedVisibility(
-                visible = !showWelcomeAnimation,
-                enter = fadeIn(animationSpec = tween(durationMillis = 500, delayMillis = 300)),
-                exit = fadeOut()
-            ) {
-                HomeContent(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = contentAlpha.value },
-                    scrollState = scrollState,
-                    uiState = uiState,
-                    onNavigateToEvents = onNavigateToEvents,
-                    onNavigateToChildren = onNavigateToChildren,
-                    onNavigateToAttendance = onNavigateToAttendance,
-                    onNavigateToNotes = onNavigateToNotes,
-                    onNavigateToGames = onNavigateToGames,
-                    onNavigateToChildDetails = onNavigateToChildDetails,
-                    onNavigateToEventDetails = onNavigateToEventDetails,
-                    onNavigateToAnalytics = onNavigateToAnalytics
-
-                )
-            }
+        // Показываем сообщение об ошибке, если оно есть
+        uiState.message?.let { message ->
+            Toast.makeText(LocalContext.current, message, Toast.LENGTH_LONG).show()
+            viewModel.clearMessage()
         }
     }
 }
-
-@Composable
-fun rememberHomeScreenTopBarState(): HomeScreenTopBarState {
-    return remember { HomeScreenTopBarState() }
-}
-
-class HomeScreenTopBarState {
-    var isExpanded by mutableStateOf(true)
-}
-
