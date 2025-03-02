@@ -1,6 +1,7 @@
 [versions]
 accompanistSystemuicontroller = "0.30.1"
 agp = "8.8.2"
+compose = "2.4.1"
 coreSplashscreen = "1.0.1"
 foundation = "1.7.8"
 kotlin = "2.1.10"
@@ -14,6 +15,7 @@ lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
 composeBom = "2025.02.00"
 materialIconsExtended = "1.7.8"
+navigationComposeTyped = "0.6.0"
 opencsv = "5.7.1"
 poiOoxml = "5.2.3"
 poi = "5.2.3"
@@ -48,6 +50,7 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
+androidx-navigation-compose-typed = { module = "androidx.navigation:navigation-compose-typed", version.ref = "navigationComposeTyped" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -62,6 +65,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 
 # Hilt
+compose = { module = "com.kizitonwose.calendar:compose", version.ref = "compose" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }

@@ -5,13 +5,14 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.vozhatapp.presentation.home.HomeScreen
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
+import com.example.vozhatapp.navigation.AppNavHost
 import com.example.vozhatapp.ui.theme.VozhatAppTheme
 import dagger.hilt.android.AndroidEntryPoint
-import android.os.SystemClock
-import com.example.vozhatapp.presentation.childprofile.ChildProfileScreen
-import com.example.vozhatapp.presentation.children.AddChildScreen
-import com.example.vozhatapp.presentation.children.ChildrenListScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -19,19 +20,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val currentTime = System.currentTimeMillis() // Получаем текущее время в миллисекундах
+        val currentTime = System.currentTimeMillis()
         Log.d("MainActivity", "Current time: $currentTime")
 
         setContent {
             VozhatAppTheme {
-                HomeScreen(
-                    onNavigateToEvents = { TODO() },
-                    onNavigateToChildren = { TODO() },
-                    onNavigateToGames = { TODO() },
-                    onNavigateToProfile = { TODO() },
-                    onNavigateToChildDetails = { TODO() },
-                    onNavigateToEventDetails = {},
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Create NavController for navigation between screens
+                    val navController = rememberNavController()
+
+                    // Use our new AppNavHost
+                    AppNavHost(navController = navController)
+                }
             }
         }
     }

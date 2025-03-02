@@ -24,6 +24,7 @@ fun HomeContent(
     onNavigateToEvents: () -> Unit,
     onNavigateToChildren: () -> Unit,
     onNavigateToAttendance: () -> Unit,
+    onNavigateToNotes: () -> Unit,
     onNavigateToGames: () -> Unit,
     onNavigateToChildDetails: (Long) -> Unit,
     onNavigateToEventDetails: (Long) -> Unit
@@ -39,6 +40,7 @@ fun HomeContent(
             onNavigateToEvents = onNavigateToEvents,
             onNavigateToChildren = onNavigateToChildren,
             onNavigateToAttendance = onNavigateToAttendance,
+            onNavigateToNotes = onNavigateToNotes,
             onNavigateToGames = onNavigateToGames
         )
 
