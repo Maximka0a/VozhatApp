@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.example.vozhatapp.presentation.analytics.AnalyticsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceReportsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceScreen
 import com.example.vozhatapp.presentation.attendance.ChildAttendanceScreen
@@ -43,7 +44,8 @@ fun AppNavHost(navController: NavHostController) {
                 },
                 onNavigateToEventDetails = { eventId ->
                     navController.navigate(EventDetail(eventId))
-                }
+                },
+                onNavigateToAnalytics = { navController.navigate("analytics") }
             )
         }
 
@@ -190,6 +192,18 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
 
+// ===== ANALYTICS NAVIGATION =====
+        composable("analytics") {
+            AnalyticsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEventDetail = { eventId ->
+                    navController.navigate(EventDetail(eventId))
+                },
+                onNavigateToChildDetail = { childId ->
+                    navController.navigate(ChildDetail(childId))
+                }
+            )
+        }
         // ===== GAMES NAVIGATION =====
         composable<Games> {
             GamesScreen(

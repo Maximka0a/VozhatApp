@@ -9,7 +9,17 @@ interface AchievementDao {
     @Query("SELECT * FROM achievements WHERE child_id = :childId ORDER BY date DESC")
     fun getAchievementsForChild(childId: Long): Flow<List<Achievement>>
 
-    @Insert
+    @Query("""
+        SELECT c.id, c.name, c.lastName, c.squadName, 
+        SUM(a.points) AS totalPoints
+        FROM children c
+        LEFT JOIN achievements a ON c.id = a.child_id
+        GROUP BY c.id
+        ORDER BY totalPoints DESC
+    """)
+    fun getChildrenRanking(): Flow<List<ChildWithPoints>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAchievement(achievement: Achievement): Long
 
     @Update
@@ -18,21 +28,11 @@ interface AchievementDao {
     @Delete
     suspend fun deleteAchievement(achievement: Achievement)
 
-    @RewriteQueriesToDropUnusedColumns
-    @Query("""
-        SELECT c.*, SUM(a.points) as totalPoints 
-        FROM children c 
-        LEFT JOIN achievements a ON c.id = a.child_id 
-        GROUP BY c.id 
-        ORDER BY totalPoints DESC
-    """)
-    fun getChildrenRanking(): Flow<List<ChildWithPoints>>
-
     data class ChildWithPoints(
         val id: Long,
         val name: String,
         val lastName: String,
         val squadName: String,
-        val totalPoints: Int
+        val totalPoints: Int?
     )
 }

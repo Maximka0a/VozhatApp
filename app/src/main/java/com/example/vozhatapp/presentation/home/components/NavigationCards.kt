@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Event
@@ -23,7 +24,8 @@ fun NavigationCards(
     onNavigateToChildren: () -> Unit,
     onNavigateToAttendance: () -> Unit,
     onNavigateToNotes: () -> Unit,
-    onNavigateToGames: () -> Unit
+    onNavigateToGames: () -> Unit,
+    onNavigateToAnalytics: () -> Unit
 ) {
     // Определяем карточки навигации
     val navItems = listOf(
@@ -33,6 +35,15 @@ fun NavigationCards(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onClick = onNavigateToEvents
+        ),
+        // In NavigationCards.kt, add a new card for Analytics:
+
+        NavigationItem(
+            title = "Аналитика",
+            icon = Icons.Outlined.BarChart,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            onClick = onNavigateToAnalytics
         ),
         NavigationItem(
             title = "Заметки",

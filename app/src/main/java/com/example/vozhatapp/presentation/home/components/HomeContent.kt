@@ -26,6 +26,7 @@ fun HomeContent(
     onNavigateToAttendance: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToGames: () -> Unit,
+    onNavigateToAnalytics: () -> Unit,
     onNavigateToChildDetails: (Long) -> Unit,
     onNavigateToEventDetails: (Long) -> Unit
 ) {
@@ -41,7 +42,8 @@ fun HomeContent(
             onNavigateToChildren = onNavigateToChildren,
             onNavigateToAttendance = onNavigateToAttendance,
             onNavigateToNotes = onNavigateToNotes,
-            onNavigateToGames = onNavigateToGames
+            onNavigateToGames = onNavigateToGames,
+            onNavigateToAnalytics = onNavigateToAnalytics
         )
 
         // Секция с сегодняшними событиями

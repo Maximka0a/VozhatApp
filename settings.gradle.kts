@@ -16,9 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }  // Исправленная строка для Kotlin DSL
     }
 }
 
 rootProject.name = "VozhatApp"
 include(":app")
- 

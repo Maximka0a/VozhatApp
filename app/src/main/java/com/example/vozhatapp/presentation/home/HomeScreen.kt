@@ -44,6 +44,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToAttendance: () -> Unit,
     onNavigateToNotes: () -> Unit,
+    onNavigateToAnalytics: () -> Unit,
     onNavigateToChildDetails: (Long) -> Unit,
     onNavigateToEventDetails: (Long) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
@@ -141,7 +142,9 @@ fun HomeScreen(
                     onNavigateToNotes = onNavigateToNotes,
                     onNavigateToGames = onNavigateToGames,
                     onNavigateToChildDetails = onNavigateToChildDetails,
-                    onNavigateToEventDetails = onNavigateToEventDetails
+                    onNavigateToEventDetails = onNavigateToEventDetails,
+                    onNavigateToAnalytics = onNavigateToAnalytics
+
                 )
             }
         }
