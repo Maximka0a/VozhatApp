@@ -26,14 +26,6 @@ fun HomeTopAppBar(
                 )
             )
         },
-        navigationIcon = {
-            IconButton(onClick = onMenuClick) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Меню"
-                )
-            }
-        },
         actions = {
             // Добавлена кнопка обновления
             IconButton(onClick = onRefresh) {
