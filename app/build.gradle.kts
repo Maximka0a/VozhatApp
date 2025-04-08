@@ -47,7 +47,7 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation(libs.kotlinx.serialization.json)
     implementation( libs.compose)
-
+    implementation(libs.mpandroidchart)
     implementation (libs.androidx.lifecycle.runtime.compose)
     implementation (libs.androidx.lifecycle.viewmodel.compose)
     implementation (libs.accompanist.systemuicontroller)

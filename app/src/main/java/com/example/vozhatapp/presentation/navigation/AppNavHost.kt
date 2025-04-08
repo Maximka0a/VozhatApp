@@ -7,21 +7,22 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.example.vozhatapp.presentation.analytics.AnalyticsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceReportsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceScreen
 import com.example.vozhatapp.presentation.attendance.ChildAttendanceScreen
 import com.example.vozhatapp.presentation.childprofile.ChildProfileScreen
-import com.example.vozhatapp.presentation.children.AddChildScreen
 import com.example.vozhatapp.presentation.children.ChildrenListScreen
-import com.example.vozhatapp.presentation.events.EventDetailScreen
-import com.example.vozhatapp.presentation.events.EventEditScreen
-import com.example.vozhatapp.presentation.events.EventsScreen
+import com.example.vozhatapp.presentation.children.edit.AddChildScreen
+import com.example.vozhatapp.presentation.events.Detail.EventDetailScreen
+import com.example.vozhatapp.presentation.events.Edit.EventEditScreen
+import com.example.vozhatapp.presentation.events.List.EventsScreen
 import com.example.vozhatapp.presentation.games.GameDetailScreen
 import com.example.vozhatapp.presentation.games.GameEditScreen
 import com.example.vozhatapp.presentation.games.GamesScreen
 import com.example.vozhatapp.presentation.home.HomeScreen
 import com.example.vozhatapp.presentation.notes.NoteDetailScreen
-import com.example.vozhatapp.presentation.notes.NoteEditScreen
+import com.example.vozhatapp.presentation.notes.edit.NoteEditScreen
 import com.example.vozhatapp.presentation.notes.NotesScreen
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -29,7 +30,6 @@ import com.example.vozhatapp.presentation.notes.NotesScreen
 fun AppNavHost(navController: NavHostController) {
     NavHost(navController, startDestination = Home) {
 
-        // Home Screen
         composable<Home> {
             HomeScreen(
                 onNavigateToEvents = { navController.navigate(Events) },
@@ -37,13 +37,19 @@ fun AppNavHost(navController: NavHostController) {
                 onNavigateToAttendance = { navController.navigate(Attendance) },
                 onNavigateToNotes = { navController.navigate(Notes) },
                 onNavigateToGames = { navController.navigate(Games) },
-                onNavigateToProfile = { navController.navigate(Profile) },
                 onNavigateToChildDetails = { childId ->
                     navController.navigate(ChildDetail(childId))
                 },
                 onNavigateToEventDetails = { eventId ->
                     navController.navigate(EventDetail(eventId))
-                }
+                },
+                onNavigateToAnalytics = { navController.navigate("analytics") },
+                // Новые параметры
+                onNavigateToSettings = { navController.navigate("settings") },
+                onCreateNewEvent = { navController.navigate(EventEdit()) },
+                onNavigateToNoteDetails = { noteId ->
+                    navController.navigate(NoteDetail(noteId))
+                },
             )
         }
 
@@ -73,7 +79,7 @@ fun AppNavHost(navController: NavHostController) {
             EventEditScreen(
                 eventId = if (eventData.eventId == -1L) null else eventData.eventId,
                 onNavigateBack = { navController.popBackStack() },
-                onEventSaved = { savedEventId ->
+                onEventSaved = { savedEventId: Long ->
                     navController.navigate(EventDetail(savedEventId)) {
                         popUpTo(Events) {}
                     }
@@ -190,6 +196,18 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
 
+// ===== ANALYTICS NAVIGATION =====
+        composable("analytics") {
+            AnalyticsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEventDetail = { eventId ->
+                    navController.navigate(EventDetail(eventId))
+                },
+                onNavigateToChildDetail = { childId ->
+                    navController.navigate(ChildDetail(childId))
+                }
+            )
+        }
         // ===== GAMES NAVIGATION =====
         composable<Games> {
             GamesScreen(

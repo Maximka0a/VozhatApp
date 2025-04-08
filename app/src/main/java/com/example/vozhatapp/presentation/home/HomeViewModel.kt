@@ -12,12 +12,14 @@ import com.example.vozhatapp.presentation.home.model.ChildRankingItem
 import com.example.vozhatapp.presentation.home.model.ReminderItem
 import com.example.vozhatapp.utils.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,6 +30,7 @@ class HomeViewModel @Inject constructor(
     private val achievementRepository: AchievementRepository
 ) : ViewModel() {
 
+    private val TAG = "HomeViewModel"
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
 
@@ -37,114 +40,134 @@ class HomeViewModel @Inject constructor(
 
     fun loadData() {
         val currentTimeMillis = System.currentTimeMillis()
-
-        // Начало и конец текущего дня
         val todayStart = DateUtils.getStartOfDay(currentTimeMillis)
         val todayEnd = DateUtils.getEndOfDay(currentTimeMillis)
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            // Загружаем события на сегодня
-            loadTodayEvents(todayStart, todayEnd)
-
-            // Загружаем рейтинг детей по достижениям
-            loadChildrenRanking()
-
-            // Загружаем напоминания на сегодня
-            loadUpcomingReminders(todayStart, todayEnd)
-
-            _uiState.update { it.copy(isLoading = false) }
-        }
-    }
-
-    private fun loadTodayEvents(todayStart: Long, todayEnd: Long) {
-        viewModelScope.launch {
             try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                Log.d("HomeViewModel", "Загрузка событий с ${sdf.format(Date(todayStart))} по ${sdf.format(Date(todayEnd))}")
+                _uiState.update { it.copy(isLoading = true, message = null) }
+                Log.d(TAG, "Начало загрузки данных для главного экрана")
 
-                eventRepository.allEvents.collect { allEvents ->
-                    // Фильтруем события на текущий день
-                    val todayEvents = allEvents.filter { event ->
-                        event.startTime in todayStart..todayEnd
+                // Используем async для параллельного запуска всех загрузок
+                val childrenCountDeferred = async {
+                    try {
+                        withTimeoutOrNull(5000) { // 5 секунд тайм-аут
+                            childRepository.getAllChildren()
+                                .catch { e ->
+                                    Log.e(TAG, "Ошибка при получении списка детей", e)
+                                    emptyList<Any>()
+                                }.first()
+                        }?.size ?: 0
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при загрузке количества детей", e)
+                        0
                     }
-
-                    Log.d("HomeViewModel", "Отфильтровано событий на сегодня: ${todayEvents.size}")
-                    _uiState.update { it.copy(todayEvents = todayEvents) }
                 }
+
+                val eventsDeferred = async {
+                    try {
+                        withTimeoutOrNull(5000) {
+                            eventRepository.getEventsByDateRange(todayStart, todayEnd)
+                                .catch { e ->
+                                    Log.e(TAG, "Ошибка при загрузке событий", e)
+                                    emptyList<Event>()
+                                }.first()
+                        } ?: emptyList()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при загрузке событий: ${e.message}", e)
+                        emptyList()
+                    }
+                }
+
+                val rankingDeferred = async {
+                    try {
+                        withTimeoutOrNull(5000) {
+                            achievementRepository.getChildrenRanking()
+                                .catch { e ->
+                                    Log.e(TAG, "Ошибка при загрузке рейтинга", e)
+                                    emptyList<Any>()
+                                }.first()
+                        }?.map { childWithPoints ->
+                            ChildRankingItem(
+                                id = childWithPoints.id,
+                                name = childWithPoints.name,
+                                lastName = childWithPoints.lastName,
+                                squadName = childWithPoints.squadName,
+                                points = childWithPoints.totalPoints ?: 0,
+                                photoUrl = null // Установка в null, чтобы избежать ошибок
+                            )
+                        }?.sortedByDescending { it.points } ?: emptyList()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при загрузке рейтинга детей: ${e.message}", e)
+                        emptyList()
+                    }
+                }
+
+                val remindersDeferred = async {
+                    try {
+                        withTimeoutOrNull(5000) {
+                            noteRepository.getTodayReminders()
+                                .catch { e ->
+                                    Log.e(TAG, "Ошибка при загрузке напоминаний", e)
+                                    emptyList<Any>()
+                                }.first()
+                        }?.filter { it.reminderDate != null && it.reminderDate in todayStart..todayEnd }
+                            ?.map { note ->
+                                ReminderItem(
+                                    id = note.id,
+                                    title = note.title,
+                                    description = note.content,
+                                    date = note.reminderDate ?: currentTimeMillis
+                                )
+                            }?.sortedBy { it.date } ?: emptyList()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ошибка при загрузке напоминаний: ${e.message}", e)
+                        emptyList()
+                    }
+                }
+
+                // Ждем завершения всех async задач
+                val childrenCount = childrenCountDeferred.await()
+                val events = eventsDeferred.await()
+                val ranking = rankingDeferred.await()
+                val reminders = remindersDeferred.await()
+
+                // Обновляем UI-состояние одним вызовом
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        totalChildrenCount = childrenCount,
+                        todayEvents = events,
+                        topChildren = ranking,
+                        upcomingReminders = reminders
+                    )
+                }
+
+                Log.d(TAG, "Загрузка данных завершена: детей=${childrenCount}, событий=${events.size}, " +
+                        "детей в рейтинге=${ranking.size}, напоминаний=${reminders.size}")
+
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Ошибка при загрузке событий: ${e.message}", e)
+                Log.e(TAG, "Неожиданная ошибка при загрузке данных", e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Ошибка при загрузке данных: ${e.localizedMessage}"
+                    )
+                }
             }
         }
     }
 
-    private fun loadChildrenRanking() {
-        viewModelScope.launch {
-            try {
-                // Используем репозиторий достижений для получения рейтинга детей
-                achievementRepository.getChildrenRanking().collect { childrenWithPoints ->
-                    Log.d("HomeViewModel", "Получено ${childrenWithPoints.size} детей с баллами")
-
-                    // Преобразуем данные из репозитория в модель представления
-                    val childrenRanking = childrenWithPoints.map { childWithPoints ->
-                        ChildRankingItem(
-                            id = childWithPoints.id,
-                            name = childWithPoints.name,
-                            lastName = childWithPoints.lastName,
-                            squadName = childWithPoints.squadName,
-                            points = childWithPoints.totalPoints ?: 0
-                        )
-                    }.sortedByDescending { it.points } // Сортируем по убыванию баллов
-                        .take(10) // Берем только топ-10
-
-                    _uiState.update { it.copy(topChildren = childrenRanking) }
-                }
-            } catch (e: Exception) {
-                Log.e("HomeViewModel", "Ошибка при загрузке рейтинга детей: ${e.message}", e)
-            }
-        }
-    }
-
-    private fun loadUpcomingReminders(todayStart: Long, todayEnd: Long) {
-        viewModelScope.launch {
-            try {
-                noteRepository.getTodayReminders().collect { notes ->
-                    val todayReminders = notes.filter { note ->
-                        val reminderTime = note.reminderDate ?: 0
-                        reminderTime in todayStart..todayEnd
-                    }
-
-                    val reminderItems = todayReminders.map { note ->
-                        ReminderItem(
-                            id = note.id,
-                            title = note.title,
-                            description = note.content,
-                            date = note.reminderDate ?: System.currentTimeMillis()
-                        )
-                    }
-                    _uiState.update { it.copy(upcomingReminders = reminderItems) }
-                }
-            } catch (e: Exception) {
-                Log.e("HomeViewModel", "Ошибка при загрузке напоминаний: ${e.message}", e)
-            }
-        }
-    }
-
-    fun refresh() {
-        loadData()
-    }
-
-    fun onChildClick(childId: Long) {
-        // Обработка нажатия на карточку ребенка
-        // Например, навигация на экран с деталями ребенка
+    fun clearMessage() {
+        _uiState.update { it.copy(message = null) }
     }
 }
-
 
 data class HomeUiState(
     val isLoading: Boolean = false,
     val todayEvents: List<Event> = emptyList(),
     val topChildren: List<ChildRankingItem> = emptyList(),
-    val upcomingReminders: List<ReminderItem> = emptyList()
+    val upcomingReminders: List<ReminderItem> = emptyList(),
+    val totalChildrenCount: Int = 0,
+    val message: String? = null
 )

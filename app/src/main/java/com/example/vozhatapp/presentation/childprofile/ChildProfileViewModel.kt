@@ -37,14 +37,8 @@ class ChildProfileViewModel @Inject constructor(
                         _uiState.update { it.copy(child = child, isLoading = false) }
                     }
 
-                // Load achievements
-                loadAchievements(childId)
-
-                // Load attendance
-                loadAttendance(childId)
-
-                // Load notes
-                loadNotes(childId)
+                // Initial data loading
+                loadInitialData(childId)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -54,6 +48,17 @@ class ChildProfileViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun loadInitialData(childId: Long) {
+        // Load achievements
+        loadAchievements(childId)
+
+        // Load attendance
+        loadAttendance(childId)
+
+        // Load notes
+        loadNotes(childId)
     }
 
     fun loadAchievements(childId: Long) {
@@ -70,9 +75,7 @@ class ChildProfileViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = "Не удалось загрузить достижения: ${e.message}")
-                }
+                handleError("Не удалось загрузить достижения: ${e.message}")
             }
         }
     }
@@ -97,9 +100,7 @@ class ChildProfileViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = "Не удалось загрузить данные о посещаемости: ${e.message}")
-                }
+                handleError("Не удалось загрузить данные о посещаемости: ${e.message}")
             }
         }
     }
@@ -112,9 +113,7 @@ class ChildProfileViewModel @Inject constructor(
                         _uiState.update { it.copy(notes = notes) }
                     }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = "Не удалось загрузить заметки: ${e.message}")
-                }
+                handleError("Не удалось загрузить заметки: ${e.message}")
             }
         }
     }
@@ -142,15 +141,19 @@ class ChildProfileViewModel @Inject constructor(
                 // Note will be automatically removed from the list
                 // when the flow is updated
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = "Не удалось удалить заметку: ${e.message}")
-                }
+                handleError("Не удалось удалить заметку: ${e.message}")
             }
         }
     }
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    private fun handleError(errorMessage: String) {
+        _uiState.update {
+            it.copy(error = errorMessage)
+        }
     }
 }
 
