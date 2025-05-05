@@ -11,18 +11,20 @@ import com.example.vozhatapp.data.repository.AchievementRepository
 import com.example.vozhatapp.data.repository.AttendanceRepository
 import com.example.vozhatapp.data.repository.EventRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
-/**
- * Модель представления для экрана аналитики
- */
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val childRepository: ChildRepository,
@@ -31,15 +33,11 @@ class AnalyticsViewModel @Inject constructor(
     private val achievementRepository: AchievementRepository
 ) : ViewModel() {
 
-    // Классы для хранения статистики внутри ViewModel
-    data class AttendanceStats(val eventsAttended: Int, val totalEvents: Int)
-    data class SquadAttendanceStats(val totalRate: Int, val childCount: Int)
-
     private val _uiState = MutableStateFlow(AnalyticsUiState())
     val uiState: StateFlow<AnalyticsUiState> = _uiState.asStateFlow()
 
     init {
-        // Default date range - last 30 days
+        // Устанавливаем начальный диапазон дат - последние 30 дней
         val endDate = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 23)
             set(Calendar.MINUTE, 59)
@@ -59,19 +57,44 @@ class AnalyticsViewModel @Inject constructor(
         updateDateRange(startDate, endDate)
     }
 
+    /**
+     * Выбор вкладки аналитики
+     */
     fun selectTab(index: Int) {
         _uiState.update { it.copy(selectedTabIndex = index) }
     }
 
+    /**
+     * Показать/скрыть диалог выбора периода
+     */
     fun toggleDateRangePicker() {
         _uiState.update { it.copy(showDateRangePicker = !it.showDateRangePicker) }
     }
 
+    /**
+     * Показать/скрыть диалог экспорта
+     */
     fun toggleExportDialog() {
         _uiState.update { it.copy(showExportDialog = !it.showExportDialog) }
     }
 
+    /**
+     * Обновить диапазон дат для анализа
+     */
     fun updateDateRange(startDate: Long, endDate: Long) {
+        // Проверка, что конечная дата не раньше начальной
+        if (endDate < startDate) {
+            // Если конечная дата раньше начальной, выдаем ошибку и не меняем текущие даты
+            _uiState.update {
+                it.copy(
+                    message = "Ошибка: конечная дата не может быть раньше начальной",
+                    showDateRangePicker = true // Оставляем диалог открытым для исправления
+                )
+            }
+            return
+        }
+
+        // Даты корректны, обновляем состояние
         _uiState.update {
             it.copy(
                 startDate = startDate,
@@ -81,316 +104,523 @@ class AnalyticsViewModel @Inject constructor(
             )
         }
 
-        loadAnalyticsData(startDate, endDate)
+        loadAllAnalyticsData(startDate, endDate)
     }
-
-    fun exportData(format: ExportFormat = ExportFormat.PDF) {
-        viewModelScope.launch {
-            try {
-                // Simulate export process
-                _uiState.update { it.copy(isExporting = true) }
-
-                // In a real app, you would implement actual export logic here
-                // This could involve generating files using libraries like iText for PDF,
-                // Apache POI for Excel, or simple CSV writing
-
-                kotlinx.coroutines.delay(1500) // Simulate processing time
-
-                val formatName = when (format) {
-                    ExportFormat.PDF -> "PDF"
-                    ExportFormat.EXCEL -> "Excel"
-                    ExportFormat.CSV -> "CSV"
-                }
-
-                _uiState.update {
-                    it.copy(
-                        isExporting = false,
-                        message = "Отчет успешно экспортирован в формате $formatName"
-                    )
-                }
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isExporting = false,
-                        message = "Ошибка при экспорте отчета: ${e.message}"
-                    )
-                }
-            }
-        }
-    }
-
+    /**
+     * Очистить сообщение
+     */
     fun clearMessage() {
         _uiState.update { it.copy(message = null) }
     }
 
-    private fun loadAnalyticsData(startDate: Long, endDate: Long) {
+    /**
+     * Загружает все данные аналитики параллельно
+     */
+    private fun loadAllAnalyticsData(startDate: Long, endDate: Long) {
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                // Загрузка минимальных данных для отображения на экране
-                // даже если некоторые запросы завершатся с ошибкой
+                // Загрузка базовых данных для расчетов
                 val children = try {
                     childRepository.getAllChildren().first()
                 } catch (e: Exception) {
-                    Log.e("AnalyticsViewModel", "Error loading children", e)
+                    Log.e(TAG, "Ошибка загрузки данных о детях", e)
                     emptyList()
                 }
 
-                val squads = children.map { it.squadName }.distinct()
-
-                // Загрузка событий
                 val events = try {
                     eventRepository.getEventsByDateRange(startDate, endDate).first()
                 } catch (e: Exception) {
-                    Log.e("AnalyticsViewModel", "Error loading events", e)
+                    Log.e(TAG, "Ошибка загрузки данных о событиях", e)
                     emptyList()
                 }
 
-                // Базовые метрики для отображения в любом случае
+                if (children.isEmpty() && events.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            message = "Нет данных для анализа в выбранном периоде"
+                        )
+                    }
+                    return@launch
+                }
+
+                // Инициализируем базовые метрики
+                val squads = children.map { it.squadName }.distinct()
+                val ageDistribution = children.groupBy { it.age }.mapValues { it.value.size }
+                val squadDistribution = children.groupBy { it.squadName }.mapValues { it.value.size }
+
+                // Обновляем начальное состояние с базовыми метриками
                 _uiState.update { current ->
                     current.copy(
-                        isLoading = false,
                         totalChildren = children.size,
                         totalEvents = events.size,
                         squadCount = squads.size,
-
-                        // Примеры данных на случай, если не удастся загрузить реальные
-                        overallAttendanceRate = 75,
-                        attendanceTrend = 5.2f,
-                        achievementsTrend = 12.8f,
-                        totalAchievements = 152,
-
-                        // Распределение детей по возрастам (из имеющихся данных)
-                        ageDistribution = children.groupBy { it.age }
-                            .mapValues { it.value.size },
-
-                        // Распределение по отрядам (из имеющихся данных)
-                        squadDistribution = children.groupBy { it.squadName }
-                            .mapValues { it.value.size },
-
-                        // Примеры данных для графиков
-                        eventsByDayOfWeek = List(7) { (1..10).random() },
-                        eventsByHour = List(24) { (0..5).random() },
-
-                        // Примеры данных для категорий достижений
-                        achievementsByCategory = mapOf(
-                            "Спортивные" to 35,
-                            "Творческие" to 27,
-                            "Интеллектуальные" to 22,
-                            "Социальные" to 18,
-                            "Лидерские" to 15
-                        ),
-
-                        // Недавние события (из имеющихся данных)
-                        recentEvents = events.sortedByDescending { it.startTime }
-                            .take(5)
+                        ageDistribution = ageDistribution,
+                        squadDistribution = squadDistribution,
+                        recentEvents = events.sortedByDescending { it.startTime }.take(5)
                     )
                 }
 
-                // После отображения базовых данных пробуем загрузить более сложные метрики
-                try {
-                    // Обработка данных о посещаемости
-                    processAttendanceData(events, children)
+                // Параллельно загружаем данные аналитики
+                val attendanceResult = async { loadAttendanceAnalytics(events, children, startDate) }
+                val achievementsResult = async { loadAchievementsAnalytics(children, startDate, endDate) }
+                val eventsAnalyticsResult = async { loadEventsAnalytics(events) }
 
-                    // Обработка данных о достижениях
-                    processAchievementsData(children)
+                // Ждем завершения всех задач
+                val (attendanceAnalytics, achievementsAnalytics, eventsAnalytics) =
+                    awaitAll(attendanceResult, achievementsResult, eventsAnalyticsResult)
 
-                } catch (e: Exception) {
-                    Log.e("AnalyticsViewModel", "Error processing detailed analytics", e)
-                    _uiState.update {
-                        it.copy(
-                            message = "Некоторые данные аналитики недоступны: ${e.message}"
+                // Обновляем модель состояния с полученными данными
+                _uiState.update { state ->
+                    state.copy(
+                        isLoading = false,
+
+                        // Общие метрики
+                        overallAttendanceRate = (attendanceAnalytics as AttendanceAnalytics).overallRate,
+                        attendanceTrend = (attendanceAnalytics as AttendanceAnalytics).trend,
+                        totalAchievements = (achievementsAnalytics as AchievementsAnalytics).totalCount,
+                        achievementsTrend = (achievementsAnalytics as AchievementsAnalytics).trend,
+                        averageEventDurationHours = (eventsAnalytics as EventsAnalytics).averageDurationHours,
+
+                        // Посещаемость
+                        squadAttendanceRates = (attendanceAnalytics as AttendanceAnalytics).squadRates,
+                        eventAttendanceRates = (attendanceAnalytics as AttendanceAnalytics).eventRates,
+                        attendanceByDay = (attendanceAnalytics as AttendanceAnalytics).byDay,
+                        mostActiveChildren = (attendanceAnalytics as AttendanceAnalytics).mostActiveChildren,
+                        topAttendedEvents = (attendanceAnalytics as AttendanceAnalytics).topEvents,
+
+                        // Достижения
+                        topChildrenByAchievements = (achievementsAnalytics as AchievementsAnalytics).topChildren,
+                        achievementsByCategory = (achievementsAnalytics as AchievementsAnalytics).byCategory,
+                        achievementsByDay = (achievementsAnalytics as AchievementsAnalytics).byDay,
+
+                        // События
+                        eventsByDayOfWeek = (eventsAnalytics as EventsAnalytics).byDayOfWeek,
+                        eventsByHour = (eventsAnalytics as EventsAnalytics).byHour,
+                        eventsByDay = (eventsAnalytics as EventsAnalytics).byDay,
+
+                        // Рейтинг детей (композитный)
+                        topChildrenOverall = calculateOverallRanking(
+                            (attendanceAnalytics as AttendanceAnalytics).mostActiveChildren,
+                            (achievementsAnalytics as AchievementsAnalytics).topChildren
                         )
-                    }
+                    )
                 }
+
             } catch (e: Exception) {
-                Log.e("AnalyticsViewModel", "Error in loadAnalyticsData", e)
+                Log.e(TAG, "Ошибка при загрузке данных аналитики", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        message = "Ошибка при загрузке данных: ${e.message}"
+                        message = "Произошла ошибка при загрузке данных: ${e.message}"
                     )
                 }
             }
         }
     }
 
-    // Выделим обработку посещаемости в отдельный метод для упрощения
-    private suspend fun processAttendanceData(events: List<Event>, children: List<Child>) {
-        // Временные переменные для хранения статистики
-        var totalAttendance = 0
-        var totalPossibleAttendance = 0
-        val attendanceByEvent = mutableMapOf<Long, Int>()
-        val attendanceByChild = mutableMapOf<Long, AttendanceStats>()
-        val attendanceByDay = mutableMapOf<Int, Int>()
-
-        // Обработка посещаемости для каждого события
-        events.forEach { event ->
+    /**
+     * Загружает и обрабатывает данные о посещаемости
+     */
+    private suspend fun loadAttendanceAnalytics(events: List<Event>, children: List<Child>, startDate: Long): AttendanceAnalytics {
+        return withContext(Dispatchers.Default) {
             try {
-                val eventAttendance = attendanceRepository.getAttendanceForEvent(event.id).first()
-                val presentCount = eventAttendance.count { it.isPresent }
-                val totalCount = eventAttendance.size
+                // Временные переменные для хранения статистики
+                var totalAttendance = 0
+                var totalPossibleAttendance = 0
+                val attendanceByChild = mutableMapOf<Long, Pair<Int, Int>>() // childId -> (attended, total)
+                val eventRates = mutableMapOf<Long, Int>() // eventId -> rate
+                val dayRates = mutableMapOf<Int, Pair<Int, Int>>() // day -> (totalRate, eventCount)
 
-                if (totalCount > 0) {
-                    val attendanceRate = (presentCount * 100) / totalCount
-                    attendanceByEvent[event.id] = attendanceRate
-                    totalAttendance += presentCount
-                    totalPossibleAttendance += totalCount
+                // Получаем данные о посещаемости для каждого события
+                events.forEach { event ->
+                    try {
+                        val attendance = attendanceRepository.getAttendanceForEvent(event.id).first()
+                        if (attendance.isNotEmpty()) {
+                            val present = attendance.count { it.isPresent }
+                            val rate = (present * 100) / attendance.size
 
-                    // Отслеживаем посещаемость по дням для графиков
-                    val dayIndex = getDayIndex(event.startTime, _uiState.value.startDate)
-                    val currentRate = attendanceByDay[dayIndex] ?: 0
-                    val eventCount = attendanceByDay[-dayIndex] ?: 0
-                    attendanceByDay[dayIndex] =
-                        (currentRate * eventCount + attendanceRate) / (eventCount + 1)
-                    attendanceByDay[-dayIndex] = eventCount + 1
+                            // Сохраняем посещаемость мероприятия
+                            eventRates[event.id] = rate
 
-                    // Отслеживаем посещаемость для каждого ребенка
-                    eventAttendance.forEach { attendance ->
-                        val stats = attendanceByChild[attendance.childId] ?: AttendanceStats(0, 0)
-                        attendanceByChild[attendance.childId] = if (attendance.isPresent) {
-                            stats.copy(
-                                eventsAttended = stats.eventsAttended + 1,
-                                totalEvents = stats.totalEvents + 1
+                            // Добавляем в общий счетчик
+                            totalAttendance += present
+                            totalPossibleAttendance += attendance.size
+
+                            // Добавляем в счетчик по дням
+                            val dayIndex = getDayIndex(event.startTime, startDate)
+                            val currentDayRate = dayRates[dayIndex] ?: Pair(0, 0)
+                            dayRates[dayIndex] = currentDayRate.copy(
+                                first = currentDayRate.first + rate,
+                                second = currentDayRate.second + 1
                             )
-                        } else {
-                            stats.copy(totalEvents = stats.totalEvents + 1)
+
+                            // Обновляем посещаемость для каждого ребенка
+                            attendance.forEach { record ->
+                                val childStats = attendanceByChild[record.childId] ?: Pair(0, 0)
+                                attendanceByChild[record.childId] = if (record.isPresent) {
+                                    childStats.copy(first = childStats.first + 1, second = childStats.second + 1)
+                                } else {
+                                    childStats.copy(second = childStats.second + 1)
+                                }
+                            }
                         }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Ошибка при обработке посещаемости для события ${event.id}", e)
                     }
                 }
-            } catch (e: Exception) {
-                Log.w("AnalyticsViewModel", "Error processing attendance for event ${event.id}", e)
-            }
-        }
 
-        // Вычисляем статистику посещаемости по отрядам
-        val squadAttendance = mutableMapOf<String, SquadAttendanceStats>()
-        children.forEach { child ->
-            val stats = attendanceByChild[child.id] ?: AttendanceStats(0, 0)
-            if (stats.totalEvents > 0) {
-                val rate = (stats.eventsAttended * 100) / stats.totalEvents
-                val squadName = child.squadName
-                val squadStats = squadAttendance[squadName] ?: SquadAttendanceStats(0, 0)
-                squadAttendance[squadName] = squadStats.copy(
-                    totalRate = squadStats.totalRate + rate,
-                    childCount = squadStats.childCount + 1
-                )
-            }
-        }
+                // Вычисляем статистику посещаемости по отрядам
+                val squadAttendance = mutableMapOf<String, Pair<Int, Int>>() // squad -> (totalRate, childCount)
 
-        // Преобразуем статистику по отрядам в список пар для UI
-        val squadAttendanceRates = squadAttendance.map { (squad, stats) ->
-            Pair(squad, if (stats.childCount > 0) stats.totalRate / stats.childCount else 0)
-        }.sortedByDescending { it.second }
-
-        // Вычисляем общий процент посещаемости
-        val overallAttendanceRate = if (totalPossibleAttendance > 0) {
-            (totalAttendance * 100) / totalPossibleAttendance
-        } else 0
-
-        // Создаем список наиболее активных детей по посещаемости
-        val mostActiveChildren = attendanceByChild.entries
-            .filter { it.value.totalEvents >= 3 } // Минимальный порог
-            .map { (childId, stats) ->
-                val child = children.find { it.id == childId }
-                ChildRankingItem(
-                    childId = childId,
-                    childName = child?.let { "${it.name} ${it.lastName}" } ?: "Неизвестно",
-                    squadName = child?.squadName ?: "",
-                    points = 0,
-                    achievementCount = 0,
-                    attendanceRate = if (stats.totalEvents > 0)
-                        (stats.eventsAttended * 100) / stats.totalEvents else 0,
-                    eventsAttended = stats.eventsAttended,
-                    compositeScore = 0
-                )
-            }
-            .sortedByDescending { it.attendanceRate }
-            .take(5)
-
-        // Создаем список мероприятий с наивысшей посещаемостью
-        val topEvents = attendanceByEvent.entries
-            .sortedByDescending { it.value }
-            .take(5)
-            .mapNotNull { (eventId, rate) ->
-                val event = events.find { it.id == eventId }
-                event?.let {
-                    EventRankingItem(
-                        eventId = eventId,
-                        eventTitle = it.title,
-                        eventDate = it.startTime,
-                        attendanceRate = rate
-                    )
+                children.forEach { child ->
+                    val stats = attendanceByChild[child.id]
+                    if (stats != null && stats.second > 0) {
+                        val rate = (stats.first * 100) / stats.second
+                        val squad = squadAttendance[child.squadName] ?: Pair(0, 0)
+                        squadAttendance[child.squadName] = squad.copy(
+                            first = squad.first + rate,
+                            second = squad.second + 1
+                        )
+                    }
                 }
-            }
 
-        // Обновляем UI
-        _uiState.update { current ->
-            current.copy(
-                overallAttendanceRate = overallAttendanceRate,
-                squadAttendanceRates = squadAttendanceRates,
-                eventAttendanceRates = attendanceByEvent,
-                attendanceByDay = attendanceByDay.filterKeys { it >= 0 },
-                mostActiveChildren = mostActiveChildren,
-                topAttendedEvents = topEvents
+                // Преобразуем статистику по отрядам в список пар
+                val squadRates = squadAttendance.map { (squad, stats) ->
+                    Pair(squad, if (stats.second > 0) stats.first / stats.second else 0)
+                }.sortedByDescending { it.second }
+
+                // Вычисляем общий процент посещаемости
+                val overallRate = if (totalPossibleAttendance > 0) {
+                    (totalAttendance * 100) / totalPossibleAttendance
+                } else 0
+
+                // Преобразуем статистику по дням
+                val attendanceByDay = dayRates.mapValues { (_, pair) ->
+                    if (pair.second > 0) pair.first / pair.second else 0
+                }
+
+                // Самые активные дети
+                val mostActive = attendanceByChild.entries
+                    .filter { it.value.second >= 3 } // минимум 3 события для значимости
+                    .map { (childId, stats) ->
+                        val child = children.find { it.id == childId }
+                        val attendanceRate = if (stats.second > 0) (stats.first * 100) / stats.second else 0
+
+                        ChildRankingItem(
+                            childId = childId,
+                            childName = child?.let { "${it.name} ${it.lastName}" } ?: "Unknown",
+                            squadName = child?.squadName ?: "",
+                            points = 0,
+                            achievementCount = 0,
+                            attendanceRate = attendanceRate,
+                            eventsAttended = stats.first,
+                            compositeScore = attendanceRate
+                        )
+                    }
+                    .sortedByDescending { it.attendanceRate }
+                    .take(10)
+
+                // Лучшие мероприятия по посещаемости
+                val topEvents = eventRates.entries
+                    .sortedByDescending { it.value }
+                    .take(5)
+                    .mapNotNull { (eventId, rate) ->
+                        val event = events.find { it.id == eventId }
+                        event?.let {
+                            EventRankingItem(
+                                eventId = eventId,
+                                eventTitle = it.title,
+                                eventDate = it.startTime,
+                                attendanceRate = rate
+                            )
+                        }
+                    }
+
+                // Вычисляем тренд (сравниваем среднюю первую и вторую половину периода)
+                val trend = calculateAttendanceTrend(attendanceByDay)
+
+                AttendanceAnalytics(
+                    overallRate = overallRate,
+                    trend = trend,
+                    squadRates = squadRates,
+                    eventRates = eventRates,
+                    byDay = attendanceByDay,
+                    mostActiveChildren = mostActive,
+                    topEvents = topEvents
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при анализе посещаемости", e)
+                AttendanceAnalytics() // возвращаем пустой объект в случае ошибки
+            }
+        }
+    }
+
+    /**
+     * Загружает и обрабатывает данные о достижениях
+     */
+    private suspend fun loadAchievementsAnalytics(children: List<Child>, startDate: Long, endDate: Long): AchievementsAnalytics {
+        return withContext(Dispatchers.Default) {
+            try {
+                // Получаем рейтинг детей по достижениям
+                val childrenRanking = achievementRepository.getChildrenRanking().first()
+
+                // Получаем все достижения для анализа категорий и трендов
+                val allAchievements = mutableListOf<Achievement>()
+                childrenRanking.forEach { childWithPoints ->
+                    try {
+                        val achievements = achievementRepository.getAchievementsForChild(childWithPoints.id).first()
+                            .filter { it.date in startDate..endDate }
+                        allAchievements.addAll(achievements)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Не удалось загрузить достижения для ребенка ${childWithPoints.id}", e)
+                    }
+                }
+
+                // Определяем категории достижений по заголовкам и описаниям
+                val categories = mapOf(
+                    "Спортивные" to listOf("спорт", "бег", "физкультура", "соревнова", "футбол", "волейбол"),
+                    "Творческие" to listOf("творчес", "рисунок", "рисова", "танцы", "пение", "артис", "музык"),
+                    "Интеллектуальные" to listOf("интеллект", "учеба", "математика", "наука", "знания", "умник"),
+                    "Социальные" to listOf("социал", "помощь", "взаимодей", "коммуникаци", "друж", "команд"),
+                    "Организационные" to listOf("организаци", "лидерств", "ответствен", "дисциплин")
+                )
+
+                // Распределяем достижения по категориям
+                val achievementsByCategory = mutableMapOf<String, Int>()
+                categories.keys.forEach { achievementsByCategory[it] = 0 }
+
+                allAchievements.forEach { achievement ->
+                    val text = (achievement.title + " " + (achievement.description ?: "")).lowercase()
+                    var assigned = false
+
+                    categories.forEach { (category, keywords) ->
+                        if (!assigned && keywords.any { text.contains(it) }) {
+                            achievementsByCategory[category] = (achievementsByCategory[category] ?: 0) + 1
+                            assigned = true
+                        }
+                    }
+
+                    if (!assigned) {
+                        achievementsByCategory["Другие"] = (achievementsByCategory["Другие"] ?: 0) + 1
+                    }
+                }
+
+                // Распределение по дням
+                val achievementsByDay = allAchievements
+                    .groupBy { getDayIndex(it.date, startDate) }
+                    .mapValues { it.value.size }
+
+                // Создаем список лучших детей
+                val topChildren = childrenRanking
+                    .sortedByDescending { it.totalPoints ?: 0 }
+                    .take(10)
+                    .map { ranking ->
+                        val child = children.find { it.id == ranking.id }
+                        val achievementsList = try {
+                            achievementRepository.getAchievementsForChild(ranking.id).first()
+                                .filter { it.date in startDate..endDate }
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
+
+                        ChildRankingItem(
+                            childId = ranking.id,
+                            childName = child?.let { "${it.name} ${it.lastName}" } ?: "Unknown",
+                            squadName = child?.squadName ?: "",
+                            points = ranking.totalPoints ?: 0,
+                            achievementCount = achievementsList.size,
+                            attendanceRate = 0,
+                            eventsAttended = 0,
+                            compositeScore = ranking.totalPoints ?: 0
+                        )
+                    }
+
+                // Вычисляем тренд
+                val trend = calculateAchievementsTrend(achievementsByDay)
+
+                AchievementsAnalytics(
+                    totalCount = allAchievements.size,
+                    totalPoints = allAchievements.sumOf { it.points },
+                    trend = trend,
+                    byCategory = achievementsByCategory,
+                    byDay = achievementsByDay,
+                    topChildren = topChildren
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при анализе достижений", e)
+                AchievementsAnalytics() // возвращаем пустой объект в случае ошибки
+            }
+        }
+    }
+
+    /**
+     * Загружает и обрабатывает данные о событиях
+     */
+    private suspend fun loadEventsAnalytics(events: List<Event>): EventsAnalytics {
+        return withContext(Dispatchers.Default) {
+            try {
+                // Статистика по дням недели
+                val eventsByDayOfWeek = Array(7) { 0 }
+                events.forEach { event ->
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = event.startTime
+                    val dayOfWeek = (calendar.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY + 6) % 7 // 0 - Пн, 6 - Вс
+                    eventsByDayOfWeek[dayOfWeek]++
+                }
+
+                // Статистика по часам
+                val eventsByHour = Array(24) { 0 }
+                events.forEach { event ->
+                    val calendar = Calendar.getInstance()
+                    calendar.timeInMillis = event.startTime
+                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                    eventsByHour[hour]++
+                }
+
+                // Средняя продолжительность события в часах
+                val totalDurationMillis = events.sumOf { it.endTime - it.startTime }
+                val avgDurationHours = if (events.isNotEmpty()) {
+                    totalDurationMillis / (events.size * 3600000.0)
+                } else 0.0
+
+                // События по дням
+                val earliestEvent = events.minByOrNull { it.startTime }?.startTime ?: 0L
+                val eventsByDay = events.groupBy { getDayIndex(it.startTime, earliestEvent) }
+                    .mapValues { it.value.size }
+
+                EventsAnalytics(
+                    byDayOfWeek = eventsByDayOfWeek.toList(),
+                    byHour = eventsByHour.toList(),
+                    averageDurationHours = avgDurationHours.toFloat(),
+                    byDay = eventsByDay
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка при анализе событий", e)
+                EventsAnalytics()
+            }
+        }
+    }
+
+    /**
+     * Вычисляет общий рейтинг детей на основе посещаемости и достижений
+     */
+    private fun calculateOverallRanking(
+        attendanceRanking: List<ChildRankingItem>,
+        achievementsRanking: List<ChildRankingItem>
+    ): List<ChildRankingItem> {
+        val overallScores = mutableMapOf<Long, ChildRankingItem>()
+
+        // Добавляем очки за посещаемость
+        attendanceRanking.forEach { child ->
+            overallScores[child.childId] = child.copy(
+                compositeScore = child.attendanceRate * 5 // умножаем на вес
             )
         }
-    }
 
-    // Выделим обработку достижений в отдельный метод
-    private suspend fun processAchievementsData(children: List<Child>) {
-        try {
-            // Загружаем рейтинг детей по достижениям
-            val achievements = achievementRepository.getChildrenRanking().first()
-
-            // Создаем список лучших детей по достижениям
-            val topChildren = achievements
-                .sortedByDescending { it.totalPoints ?: 0 }
-                .take(10)
-                .map { childWithPoints ->
-                    val child = children.find { it.id == childWithPoints.id }
-                    ChildRankingItem(
-                        childId = childWithPoints.id,
-                        childName = child?.let { "${it.name} ${it.lastName}" } ?: "Неизвестно",
-                        squadName = child?.squadName ?: "",
-                        points = childWithPoints.totalPoints ?: 0,
-                        achievementCount = 0,
-                        attendanceRate = 0, // Будет обновлено позже, если есть данные
-                        eventsAttended = 0,
-                        compositeScore = childWithPoints.totalPoints ?: 0
-                    )
-                }
-
-            // Обновляем UI с данными о достижениях
-            _uiState.update { current ->
-                current.copy(
-                    totalAchievements = achievements.sumOf { it.totalPoints ?: 0 },
-                    topChildrenByAchievements = topChildren,
-                    topChildrenOverall = topChildren.take(5) // Временно используем те же данные
+        // Добавляем очки за достижения
+        achievementsRanking.forEach { child ->
+            val existing = overallScores[child.childId]
+            if (existing != null) {
+                overallScores[child.childId] = existing.copy(
+                    points = child.points,
+                    achievementCount = child.achievementCount,
+                    compositeScore = existing.compositeScore + child.points
                 )
+            } else {
+                overallScores[child.childId] = child
             }
-        } catch (e: Exception) {
-            Log.e("AnalyticsViewModel", "Error processing achievements", e)
-            // Не обновляем UI, оставляем дефолтные значения
         }
+
+        return overallScores.values.sortedByDescending { it.compositeScore }.take(10)
     }
 
+    /**
+     * Определяет тренд посещаемости, сравнивая первую и вторую половину периода
+     */
+    private fun calculateAttendanceTrend(attendanceByDay: Map<Int, Int>): Float {
+        if (attendanceByDay.isEmpty()) return 0f
 
-    private fun getDayIndex(timestamp: Long, startDate: Long): Int {
-        return ((timestamp - startDate) / (24 * 60 * 60 * 1000)).toInt()
+        val days = attendanceByDay.keys.sorted()
+        if (days.size < 4) return 0f // нужно минимум 4 дня для значимого тренда
+
+        val midPoint = days.size / 2
+        val firstHalf = days.take(midPoint)
+        val secondHalf = days.drop(midPoint)
+
+        val firstHalfAvg = firstHalf.map { attendanceByDay[it] ?: 0 }.average()
+        val secondHalfAvg = secondHalf.map { attendanceByDay[it] ?: 0 }.average()
+
+        if (firstHalfAvg == 0.0) return 0f
+
+        // Вычисляем процентное изменение
+        return ((secondHalfAvg - firstHalfAvg) / firstHalfAvg * 100).toFloat()
     }
 
-    private fun getDayCount(startDate: Long, endDate: Long): Int {
-        return ((endDate - startDate) / (24 * 60 * 60 * 1000)).toInt() + 1
+    /**
+     * Определяет тренд достижений, сравнивая первую и вторую половину периода
+     */
+    private fun calculateAchievementsTrend(achievementsByDay: Map<Int, Int>): Float {
+        if (achievementsByDay.isEmpty()) return 0f
+
+        val days = achievementsByDay.keys.sorted()
+        if (days.size < 4) return 0f // нужно минимум 4 дня для значимого тренда
+
+        val midPoint = days.size / 2
+        val firstHalf = days.take(midPoint)
+        val secondHalf = days.drop(midPoint)
+
+        val firstHalfSum = firstHalf.sumOf { achievementsByDay[it] ?: 0 }
+        val secondHalfSum = secondHalf.sumOf { achievementsByDay[it] ?: 0 }
+
+        if (firstHalfSum == 0) return 0f
+
+        // Вычисляем процентное изменение
+        return ((secondHalfSum - firstHalfSum).toFloat() / firstHalfSum * 100)
     }
 
-    private fun getCalendarField(timestamp: Long, field: Int): Int {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = timestamp
-        return calendar.get(field)
+    /**
+     * Получает индекс дня относительно базовой даты
+     */
+    private fun getDayIndex(timestamp: Long, baseTimestamp: Long): Int {
+        return ((timestamp - baseTimestamp) / (24 * 60 * 60 * 1000)).toInt()
     }
+
+    companion object {
+        private const val TAG = "AnalyticsViewModel"
+    }
+
+    // Вспомогательные классы для инкапсуляции данных аналитики
+
+    private data class AttendanceAnalytics(
+        val overallRate: Int = 0,
+        val trend: Float = 0f,
+        val squadRates: List<Pair<String, Int>> = emptyList(),
+        val eventRates: Map<Long, Int> = emptyMap(),
+        val byDay: Map<Int, Int> = emptyMap(),
+        val mostActiveChildren: List<ChildRankingItem> = emptyList(),
+        val topEvents: List<EventRankingItem> = emptyList()
+    )
+
+    private data class AchievementsAnalytics(
+        val totalCount: Int = 0,
+        val totalPoints: Int = 0,
+        val trend: Float = 0f,
+        val byCategory: Map<String, Int> = emptyMap(),
+        val byDay: Map<Int, Int> = emptyMap(),
+        val topChildren: List<ChildRankingItem> = emptyList()
+    )
+
+    private data class EventsAnalytics(
+        val byDayOfWeek: List<Int> = List(7) { 0 },
+        val byHour: List<Int> = List(24) { 0 },
+        val averageDurationHours: Float = 0f,
+        val byDay: Map<Int, Int> = emptyMap()
+    )
 }
 
 data class AnalyticsUiState(
@@ -454,7 +684,3 @@ data class EventRankingItem(
     val eventDate: Long,
     val attendanceRate: Int
 )
-// Переименованная версия
-enum class AnalyticsExportFormat {
-    PDF, EXCEL, CSV
-}

@@ -2,6 +2,7 @@ package com.example.vozhatapp.presentation.analytics
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,10 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material.icons.filled.TrendingUp
@@ -95,6 +94,7 @@ import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.formatter.PercentFormatter
+import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.utils.ColorTemplate
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -112,7 +112,6 @@ fun AnalyticsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
@@ -134,10 +133,6 @@ fun AnalyticsScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleDateRangePicker() }) {
                         Icon(Icons.Default.DateRange, contentDescription = "Выбрать период")
-                    }
-
-                    IconButton(onClick = { viewModel.toggleExportDialog() }) {
-                        Icon(Icons.Default.Share, contentDescription = "Экспорт")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -174,7 +169,7 @@ fun AnalyticsScreen(
                 }
             }
 
-            // Main content area - show appropriate analytics based on selected tab
+            // Main content area
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     uiState.isLoading -> {
@@ -185,8 +180,7 @@ fun AnalyticsScreen(
                             tabIndex = uiState.selectedTabIndex,
                             uiState = uiState,
                             onNavigateToEventDetail = onNavigateToEventDetail,
-                            onNavigateToChildDetail = onNavigateToChildDetail,
-                            onExportData = { viewModel.exportData() }
+                            onNavigateToChildDetail = onNavigateToChildDetail
                         )
                     }
                 }
@@ -204,19 +198,9 @@ fun AnalyticsScreen(
                 onDismiss = { viewModel.toggleDateRangePicker() }
             )
         }
-
-        // Export Dialog
-        if (uiState.showExportDialog) {
-            ExportDialog(
-                onExportFormat = { format ->
-                    viewModel.exportData(format)
-                    viewModel.toggleExportDialog()
-                },
-                onDismiss = { viewModel.toggleExportDialog() }
-            )
-        }
     }
 }
+
 
 @Composable
 private fun DateRangeSelectionBar(
@@ -279,8 +263,7 @@ private fun AnalyticsContent(
     tabIndex: Int,
     uiState: AnalyticsUiState,
     onNavigateToEventDetail: (Long) -> Unit,
-    onNavigateToChildDetail: (Long) -> Unit,
-    onExportData: () -> Unit
+    onNavigateToChildDetail: (Long) -> Unit
 ) {
     val selectedTab = AnalyticsTabs.entries[tabIndex]
 
@@ -297,21 +280,6 @@ private fun AnalyticsContent(
             AnalyticsTabs.EVENTS -> EventsAnalyticsContent(uiState, onNavigateToEventDetail)
             AnalyticsTabs.OVERVIEW -> OverviewAnalyticsContent(uiState)
         }
-
-        // Export button at bottom of screen
-        Button(
-            onClick = onExportData,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Download,
-                contentDescription = null,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Text("Экспортировать данные")
-        }
     }
 }
 
@@ -321,7 +289,7 @@ private fun AttendanceAnalyticsContent(
     onNavigateToEventDetail: (Long) -> Unit
 ) {
     // Получаем все необходимые цвета заранее
-    val colorScheme = MaterialTheme.colorScheme
+    val colorScheme = colorScheme
     val primaryColor = colorScheme.primary.toArgb()
     val onSurfaceColor = colorScheme.onSurface
     val onPrimaryColor = colorScheme.onPrimary
@@ -334,8 +302,7 @@ private fun AttendanceAnalyticsContent(
             title = "Посещаемость",
             mainMetric = "${uiState.overallAttendanceRate}%",
             description = "средняя посещаемость за период",
-            trendValue = uiState.attendanceTrend,
-            trendDescription = "по сравнению с прошлым периодом"
+            trendValue = uiState.attendanceTrend
         )
 
         // Attendance over time chart
@@ -541,14 +508,13 @@ private fun AchievementsAnalyticsContent(
     uiState: AnalyticsUiState,
     onNavigateToChildDetail: (Long) -> Unit
 ) {
-    // Получаем все необходимые цвета заранее
-    val colorScheme = MaterialTheme.colorScheme
-    val onSurfaceColor = colorScheme.onSurface
-    val secondaryColor = colorScheme.secondary.toArgb()
-    val surfaceVariantColor = colorScheme.surfaceVariant
-    val onSurfaceVariantColor = colorScheme.onSurfaceVariant
-    val primaryContainerColor = colorScheme.primaryContainer
-    val onPrimaryContainerColor = colorScheme.onPrimaryContainer
+    // Получаем все цвета ЗАРАНЕЕ для использования в AndroidView
+    val secondaryColor = MaterialTheme.colorScheme.secondary.toArgb()
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+    val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
+    val onPrimaryContainerColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb() // Сохраняем для использования в AndroidView
+    val onSurfaceVariantColorCompose = MaterialTheme.colorScheme.onSurfaceVariant // Для Text компонентов
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // Achievement summary card
@@ -556,55 +522,9 @@ private fun AchievementsAnalyticsContent(
             title = "Достижения",
             mainMetric = uiState.totalAchievements.toString(),
             description = "достижений выдано за период",
-            trendValue = uiState.achievementsTrend,
-            trendDescription = "по сравнению с прошлым периодом"
+            trendValue = uiState.achievementsTrend
         )
 
-        // Achievement distribution pie chart
-        ChartCard(
-            title = "Распределение достижений",
-            description = "По категориям достижений"
-        ) {
-            // Using MPAndroidChart for pie chart
-            AndroidView(
-                factory = { context ->
-                    PieChart(context).apply {
-                        description.isEnabled = false
-                        setDrawEntryLabels(false)
-                        legend.isEnabled = true
-                        legend.textSize = 12f
-                        setUsePercentValues(true)
-                        holeRadius = 45f
-                        transparentCircleRadius = 50f
-                        setDrawCenterText(true)
-                        centerText = "Достижения"
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp),
-                update = { chart ->
-                    // Sample data for achievement categories
-                    val entries = uiState.achievementsByCategory.map { (category, count) ->
-                        PieEntry(count.toFloat(), category)
-                    }
-
-                    val colors = ColorTemplate.MATERIAL_COLORS.toList() +
-                            ColorTemplate.VORDIPLOM_COLORS.toList()
-
-                    val dataSet = PieDataSet(entries, "Категории").apply {
-                        setColors(colors)
-                        setDrawValues(true)
-                        valueTextSize = 12f
-                        valueTextColor = Color.White.toArgb()
-                        valueFormatter = PercentFormatter(chart)
-                    }
-
-                    chart.data = PieData(dataSet)
-                    chart.invalidate()
-                }
-            )
-        }
 
         // Top children by achievements
         Card(
@@ -616,79 +536,89 @@ private fun AchievementsAnalyticsContent(
                 Text(
                     text = "Топ детей по достижениям",
                     style = MaterialTheme.typography.titleMedium,
-                    color = onSurfaceColor // Используем ранее полученный цвет
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    uiState.topChildrenByAchievements.forEachIndexed { index, child ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onNavigateToChildDetail(child.childId) }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Badge showing rank
-                            Box(
+                if (uiState.topChildrenByAchievements.isEmpty()) {
+                    // Показываем сообщение при отсутствии данных
+                    Text(
+                        text = "Нет данных о достижениях",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onSurfaceVariantColorCompose,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        uiState.topChildrenByAchievements.forEachIndexed { index, child ->
+                            Row(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        when (index) {
-                                            0 -> Color(0xFFFFD700) // Gold
-                                            1 -> Color(0xFFC0C0C0) // Silver
-                                            2 -> Color(0xFFCD7F32) // Bronze
-                                            else -> surfaceVariantColor // Используем ранее полученный цвет
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
+                                    .clickable { onNavigateToChildDetail(child.childId) }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "#${index + 1}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black.copy(alpha = 0.8f)
-                                )
+                                // Badge showing rank
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            when (index) {
+                                                0 -> Color(0xFFFFD700) // Gold
+                                                1 -> Color(0xFFC0C0C0) // Silver
+                                                2 -> Color(0xFFCD7F32) // Bronze
+                                                else -> surfaceVariantColor
+                                            }
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "#${index + 1}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black.copy(alpha = 0.8f)
+                                    )
+                                }
+
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 12.dp)
+                                ) {
+                                    Text(
+                                        text = child.childName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = child.squadName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = onSurfaceVariantColorCompose
+                                    )
+                                }
+
+                                // Points badge
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(primaryContainerColor)
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "${child.points} очков",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = onPrimaryContainerColor,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
 
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 12.dp)
-                            ) {
-                                Text(
-                                    text = child.childName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = child.squadName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = onSurfaceVariantColor // Используем ранее полученный цвет
-                                )
+                            if (index < uiState.topChildrenByAchievements.size - 1) {
+                                Divider()
                             }
-
-                            // Points badge
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(primaryContainerColor) // Используем ранее полученный цвет
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "${child.points} очков",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = onPrimaryContainerColor, // Используем ранее полученный цвет
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-
-                        if (index < uiState.topChildrenByAchievements.size - 1) {
-                            Divider()
                         }
                     }
                 }
@@ -700,62 +630,230 @@ private fun AchievementsAnalyticsContent(
             title = "Динамика достижений",
             description = "Количество новых достижений по дням"
         ) {
-            // Line chart for achievement trends
-            AndroidView(
-                factory = { context ->
-                    LineChart(context).apply {
-                        description.isEnabled = false
-                        setDrawGridBackground(false)
-                        setDrawBorders(false)
-                        setTouchEnabled(true)
-                        isDragEnabled = true
-                        isScaleXEnabled = true
-                        isScaleYEnabled = false
-                        legend.isEnabled = true
-                        axisRight.isEnabled = false
-                        axisLeft.apply {
-                            axisMinimum = 0f
-                            setDrawGridLines(true)
-                        }
-                        xAxis.apply {
-                            position = XAxis.XAxisPosition.BOTTOM
-                            setDrawGridLines(false)
-                            granularity = 1f
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                update = { chart ->
-                    // Используем ранее полученный цвет secondaryColor
-
-                    // Sample achievement data over time
-                    val entries = uiState.achievementsByDay.map { (day, count) ->
-                        Entry(day.toFloat(), count.toFloat())
-                    }
-
-                    val dataSet = LineDataSet(entries, "Новые достижения").apply {
-                        color = secondaryColor
-                        setCircleColor(secondaryColor)
-                        lineWidth = 2f
-                        circleRadius = 3f
-                        setDrawCircleHole(false)
-                        mode = LineDataSet.Mode.CUBIC_BEZIER
-                        setDrawValues(false)
-                    }
-
-                    chart.data = LineData(dataSet)
-                    chart.xAxis.valueFormatter = IndexAxisValueFormatter(
-                        uiState.achievementsByDay.map { (day, _) ->
-                            SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(day.toLong() * 86400000))
-                        }
+            // ИСПРАВЛЕННЫЙ LineChart для достижений
+            if (uiState.achievementsByDay.isEmpty()) {
+                // Показываем сообщение об отсутствии данных вместо пустого графика
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Нет данных о достижениях в выбранном периоде",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onSurfaceVariantColorCompose
                     )
-                    chart.invalidate()
                 }
-            )
+            } else {
+                AndroidView(
+                    factory = { context ->
+                        LineChart(context).apply {
+                            description.isEnabled = false
+                            setDrawGridBackground(false)
+                            setDrawBorders(false)
+                            setTouchEnabled(true)
+                            isDragEnabled = true
+                            isScaleXEnabled = true
+                            isScaleYEnabled = false
+                            legend.isEnabled = true
+                            axisRight.isEnabled = false
+                            axisLeft.apply {
+                                axisMinimum = 0f
+                                setDrawGridLines(true)
+                            }
+                            xAxis.apply {
+                                position = XAxis.XAxisPosition.BOTTOM
+                                setDrawGridLines(false)
+                                granularity = 1f
+                            }
+                            // Установка текста при отсутствии данных ЗАРАНЕЕ
+                            setNoDataText("Нет данных о достижениях")
+                            setNoDataTextColor(onSurfaceColor) // Используем сохраненный цвет
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp),
+                    update = { chart ->
+                        // Проверяем, есть ли хотя бы 2 точки для отображения линии
+                        if (uiState.achievementsByDay.size < 2) {
+                            chart.data = null
+                            chart.invalidate()
+                            return@AndroidView
+                        }
+
+                        // Сортируем дни для правильного отображения
+                        val sortedDays = uiState.achievementsByDay.toSortedMap()
+
+                        // Создаем точки для графика
+                        val entries = sortedDays.entries.mapIndexed { index, (day, count) ->
+                            Entry(index.toFloat(), count.toFloat())
+                        }
+
+                        val dataSet = LineDataSet(entries, "Новые достижения").apply {
+                            color = secondaryColor
+                            setCircleColor(secondaryColor)
+                            lineWidth = 2f
+                            circleRadius = 3f
+                            setDrawCircleHole(false)
+                            mode = LineDataSet.Mode.CUBIC_BEZIER
+                            // Отключаем отображение значений, чтобы избежать ошибок при малом количестве точек
+                            setDrawValues(false)
+                        }
+
+                        val lineData = LineData(dataSet)
+                        chart.data = lineData
+
+                        // Устанавливаем метки для оси X
+                        chart.xAxis.valueFormatter = IndexAxisValueFormatter(
+                            sortedDays.keys.mapIndexed { index, day ->
+                                SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(day.toLong() * 86400000))
+                            }
+                        )
+
+                        chart.invalidate()
+                    }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun AgeDistributionChart(
+    ageDistribution: Map<Int, Int>,
+    modifier: Modifier = Modifier
+) {
+    // Важно: получаем все цвета здесь, вне лямбды update
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary.toArgb()
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    if (ageDistribution.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(220.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Нет данных о возрастах детей",
+                style = MaterialTheme.typography.bodyMedium,
+                color = onSurfaceVariantColor
+            )
+        }
+        return
+    }
+
+    // Подготовка данных для графика, сортируем по возрасту
+    val sortedEntries = ageDistribution.entries.sortedBy { it.key }
+    val maxValue = ageDistribution.values.maxOrNull()?.toFloat() ?: 1f
+
+    // Создаем цвета для столбцов заранее
+    val barColors = sortedEntries.mapIndexed { index, _ ->
+        val intensity = 0.5f + ((index + 1).toFloat() / sortedEntries.size.toFloat()) * 0.5f
+        Color(tertiaryColor).copy(alpha = intensity).toArgb()
+    }
+
+    // Создание меток для оси X (возраста)
+    val ageLabels = sortedEntries.map { "${it.key}" }.toTypedArray()
+
+    AndroidView(
+        factory = { context ->
+            BarChart(context).apply {
+                // Основные настройки
+                description.isEnabled = false
+                setDrawGridBackground(false)
+                setDrawBorders(false)
+                setFitBars(true)
+
+                // Настройка взаимодействия
+                isDoubleTapToZoomEnabled = false
+                setPinchZoom(false)
+                setScaleEnabled(false)
+
+                // Настройка внешнего вида
+                setDrawValueAboveBar(true)
+
+                // Настройка легенды
+                legend.isEnabled = false
+
+                // Настройка оси X
+                xAxis.apply {
+                    position = XAxis.XAxisPosition.BOTTOM
+                    setDrawGridLines(false)
+                    granularity = 1f
+                    labelCount = ageDistribution.size
+                    textSize = 12f
+                    textColor = onSurfaceColor
+                }
+
+                // Настройка левой оси Y
+                axisLeft.apply {
+                    setDrawGridLines(true)
+                    axisMinimum = 0f
+                    granularity = 1f
+                    textColor = onSurfaceColor
+                    // Форматирование для целых чисел
+                    valueFormatter = object : ValueFormatter() {
+                        override fun getFormattedValue(value: Float): String {
+                            return value.toInt().toString()
+                        }
+                    }
+                }
+
+                // Отключение правой оси
+                axisRight.isEnabled = false
+
+                // Добавляем отступ слева для меток
+                extraLeftOffset = 10f
+                extraBottomOffset = 10f
+
+                // Настройка анимации
+                animateY(1000)
+            }
+        },
+        modifier = modifier.fillMaxWidth().height(220.dp),
+        update = { chart ->
+            // Создание набора данных
+            val barEntries = sortedEntries.mapIndexed { index, entry ->
+                BarEntry(index.toFloat(), entry.value.toFloat())
+            }
+
+            // Настройка набора данных
+            val dataSet = BarDataSet(barEntries, "Количество детей").apply {
+                colors = barColors
+
+                valueTextSize = 12f
+                valueTextColor = onSurfaceColor
+                valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return value.toInt().toString()
+                    }
+                }
+
+                // Увеличиваем ширину столбцов
+                barBorderWidth = 0f
+                highLightAlpha = 100
+            }
+
+            // Установка форматтера меток оси X
+            chart.xAxis.valueFormatter = object : ValueFormatter() {
+                override fun getFormattedValue(value: Float): String {
+                    val index = value.toInt()
+                    return if (index >= 0 && index < ageLabels.size) ageLabels[index] else ""
+                }
+            }
+
+            // Обновление данных графика
+            val barData = BarData(dataSet)
+            barData.barWidth = 0.7f
+            chart.data = barData
+
+            // Обновление графика
+            chart.notifyDataSetChanged()
+            chart.invalidate()
+        }
+    )
 }
 
 @Composable
@@ -764,8 +862,7 @@ private fun ChildrenAnalyticsContent(
     onNavigateToChildDetail: (Long) -> Unit
 ) {
     // Получаем все необходимые цвета заранее
-    val colorScheme = MaterialTheme.colorScheme
-    val tertiaryColor = colorScheme.tertiary.toArgb()
+    val colorScheme = colorScheme
     val onSurfaceColor = colorScheme.onSurface
     val primaryContainerColor = colorScheme.primaryContainer
     val onPrimaryContainerColor = colorScheme.onPrimaryContainer
@@ -799,99 +896,26 @@ private fun ChildrenAnalyticsContent(
             title = "Распределение по возрасту",
             description = "Количество детей разных возрастов"
         ) {
-            // Bar chart for age distribution
-            AndroidView(
-                factory = { context ->
-                    BarChart(context).apply {
-                        description.isEnabled = false
-                        setDrawGridBackground(false)
-                        setDrawBorders(false)
-                        setTouchEnabled(true)
-                        isDragEnabled = true
-                        isScaleXEnabled = false
-                        isScaleYEnabled = false
-                        legend.isEnabled = true
-                        axisRight.isEnabled = false
-                        axisLeft.apply {
-                            axisMinimum = 0f
-                            setDrawGridLines(true)
-                        }
-                        xAxis.apply {
-                            position = XAxis.XAxisPosition.BOTTOM
-                            setDrawGridLines(false)
-                            granularity = 1f
-                        }
-                    }
-                },
+            // Используем новый компонент для отображения распределения по возрасту
+            AgeDistributionChart(
+                ageDistribution = uiState.ageDistribution,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp),
-                update = { chart ->
-                    // Используем заранее полученный цвет вместо доступа к colorScheme
-
-                    // Sample age distribution data
-                    val entries = uiState.ageDistribution.map { (age, count) ->
-                        BarEntry(age.toFloat(), count.toFloat())
-                    }.sortedBy { it.x }
-
-                    val dataSet = BarDataSet(entries, "Количество детей").apply {
-                        color = tertiaryColor // Используем предварительно полученный цвет
-                        setDrawValues(true)
-                        valueTextSize = 10f
-                    }
-
-                    chart.data = BarData(dataSet)
-                    chart.xAxis.valueFormatter = IndexAxisValueFormatter(
-                        entries.map { "${it.x.toInt()} лет" }
-                    )
-                    chart.invalidate()
-                }
+                    .height(220.dp)
             )
         }
 
-        // Squad distribution pie chart
+        // Squad distribution pie chart - дополнительно улучшим его тоже
         ChartCard(
             title = "Распределение по отрядам",
             description = "Количество детей в каждом отряде"
         ) {
-            // Pie chart for squad distribution
-            AndroidView(
-                factory = { context ->
-                    PieChart(context).apply {
-                        description.isEnabled = false
-                        setDrawEntryLabels(false)
-                        legend.isEnabled = true
-                        legend.textSize = 12f
-                        setUsePercentValues(true)
-                        holeRadius = 45f
-                        transparentCircleRadius = 50f
-                        setDrawCenterText(true)
-                        centerText = "Отряды"
-                    }
-                },
+            // Улучшенное отображение круговой диаграммы отрядов
+            SquadDistributionChart(
+                squadDistribution = uiState.squadDistribution,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp),
-                update = { chart ->
-                    // Sample data for squad distribution
-                    val entries = uiState.squadDistribution.map { (squad, count) ->
-                        PieEntry(count.toFloat(), squad)
-                    }
-
-                    val colors = ColorTemplate.MATERIAL_COLORS.toList() +
-                            ColorTemplate.VORDIPLOM_COLORS.toList()
-
-                    val dataSet = PieDataSet(entries, "Отряды").apply {
-                        setColors(colors)
-                        setDrawValues(true)
-                        valueTextSize = 12f
-                        valueTextColor = Color.White.toArgb()
-                        valueFormatter = PercentFormatter(chart)
-                    }
-
-                    chart.data = PieData(dataSet)
-                    chart.invalidate()
-                }
+                    .height(250.dp)
             )
         }
 
@@ -905,71 +929,85 @@ private fun ChildrenAnalyticsContent(
                 Text(
                     text = "Топ детей по посещаемости",
                     style = MaterialTheme.typography.titleMedium,
-                    color = onSurfaceColor // Используем предварительно полученный цвет
+                    color = onSurfaceColor
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    uiState.mostActiveChildren.forEachIndexed { index, child ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onNavigateToChildDetail(child.childId) }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Attendance percentage circle
-                            Box(
+                // Если нет данных, показываем соответствующее сообщение
+                if (uiState.mostActiveChildren.isEmpty()) {
+                    Text(
+                        text = "Нет данных о посещаемости",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onSurfaceVariantColor,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        uiState.mostActiveChildren.forEachIndexed { index, child ->
+                            Row(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(primaryContainerColor), // Используем предварительно полученный цвет
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onNavigateToChildDetail(child.childId) }
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "${child.attendanceRate}%",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = onPrimaryContainerColor // Используем предварительно полученный цвет
-                                )
+                                // Attendance percentage circle
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(primaryContainerColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${child.attendanceRate}%",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = onPrimaryContainerColor
+                                    )
+                                }
+
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 12.dp)
+                                ) {
+                                    Text(
+                                        text = child.childName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = child.squadName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = onSurfaceVariantColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                // Events count badge
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(surfaceVariantColor)
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "${child.eventsAttended} соб.",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = onSurfaceVariantColor
+                                    )
+                                }
                             }
 
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 12.dp)
-                            ) {
-                                Text(
-                                    text = child.childName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = child.squadName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = onSurfaceVariantColor // Используем предварительно полученный цвет
-                                )
+                            if (index < uiState.mostActiveChildren.size - 1) {
+                                Divider()
                             }
-
-                            // Events count badge
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(surfaceVariantColor) // Используем предварительно полученный цвет
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "${child.eventsAttended} соб.",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = onSurfaceVariantColor // Используем предварительно полученный цвет
-                                )
-                            }
-                        }
-
-                        if (index < uiState.mostActiveChildren.size - 1) {
-                            Divider()
                         }
                     }
                 }
@@ -979,12 +1017,120 @@ private fun ChildrenAnalyticsContent(
 }
 
 @Composable
+fun SquadDistributionChart(
+    squadDistribution: Map<String, Int>,
+    modifier: Modifier = Modifier
+) {
+    // Получаем все цвета заранее из Compose контекста
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val whiteColor = Color.White.toArgb()
+
+    // Генерируем цвета из темы Material заранее
+    val colorPalette = listOf(
+        MaterialTheme.colorScheme.primary.toArgb(),
+        MaterialTheme.colorScheme.secondary.toArgb(),
+        MaterialTheme.colorScheme.tertiary.toArgb(),
+        MaterialTheme.colorScheme.error.toArgb(),
+        MaterialTheme.colorScheme.primaryContainer.toArgb(),
+        MaterialTheme.colorScheme.secondaryContainer.toArgb(),
+        MaterialTheme.colorScheme.tertiaryContainer.toArgb(),
+        MaterialTheme.colorScheme.errorContainer.toArgb()
+    )
+
+    if (squadDistribution.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Нет данных об отрядах",
+                style = MaterialTheme.typography.bodyMedium,
+                color = onSurfaceVariantColor
+            )
+        }
+        return
+    }
+
+    // Создаем список записей для пирога заранее
+    val entries = squadDistribution
+        .map { (squad, count) -> PieEntry(count.toFloat(), squad) }
+        .sortedByDescending { it.value }
+
+    // Создаем цвета для секторов заранее
+    val colors = entries.indices.map {
+        colorPalette[it % colorPalette.size]
+    }
+
+    AndroidView(
+        factory = { context ->
+            PieChart(context).apply {
+                // Основные настройки
+                description.isEnabled = false
+                isDrawHoleEnabled = true
+                setHoleColor(android.graphics.Color.TRANSPARENT)
+                holeRadius = 45f
+                transparentCircleRadius = 50f
+
+                // Настройка центрального текста
+                setDrawCenterText(true)
+                centerText = "Отряды"
+                setCenterTextSize(16f)
+                setCenterTextColor(onSurfaceColor)
+
+                // Настройка легенды
+                legend.apply {
+                    isEnabled = true
+                    textSize = 12f
+                    textColor = onSurfaceColor
+                    horizontalAlignment = com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.CENTER
+                    verticalAlignment = com.github.mikephil.charting.components.Legend.LegendVerticalAlignment.BOTTOM
+                    orientation = com.github.mikephil.charting.components.Legend.LegendOrientation.HORIZONTAL
+                    setDrawInside(false)
+                    xEntrySpace = 10f
+                    yEntrySpace = 0f
+                }
+
+                // Настройка внешнего вида
+                setUsePercentValues(true)
+                setDrawEntryLabels(false)
+
+                // Анимация
+                animateY(1200)
+            }
+        },
+        modifier = modifier.fillMaxWidth().height(250.dp),
+        update = { chart ->
+            // Создаем набор данных
+            val dataSet = PieDataSet(entries, "").apply {
+                setColors(colors)
+                setDrawValues(true)
+                valueTextSize = 14f
+                valueTextColor = whiteColor
+                valueFormatter = PercentFormatter(chart)
+                sliceSpace = 2f
+                selectionShift = 5f
+            }
+
+            // Обновляем данные графика
+            chart.data = PieData(dataSet).apply {
+                setValueTextSize(12f)
+                setValueTextColor(whiteColor)
+            }
+
+            chart.notifyDataSetChanged()
+            chart.invalidate()
+        }
+    )
+}
+
+@Composable
 private fun EventsAnalyticsContent(
     uiState: AnalyticsUiState,
     onNavigateToEventDetail: (Long) -> Unit
 ) {
     // Получаем все необходимые цвета заранее
-    val colorScheme = MaterialTheme.colorScheme
+    val colorScheme = colorScheme
     val primaryColor = colorScheme.primary.toArgb()
     val secondaryColor = colorScheme.secondary.toArgb()
     val onSurfaceColor = colorScheme.onSurface
@@ -1010,7 +1156,7 @@ private fun EventsAnalyticsContent(
 
             MetricCard(
                 title = "Ср. продолж.",
-                value = "${uiState.averageEventDurationHours}ч",
+                value = "${"%.2f".format(uiState.averageEventDurationHours)}ч",
                 icon = Icons.Outlined.Timer,
                 modifier = Modifier
                     .weight(1f)
@@ -1072,69 +1218,6 @@ private fun EventsAnalyticsContent(
                 }
             )
         }
-
-        // Events distribution by hour
-        ChartCard(
-            title = "Распределение по времени суток",
-            description = "Количество событий в разное время дня"
-        ) {
-            // Line chart for events by hour
-            AndroidView(
-                factory = { context ->
-                    LineChart(context).apply {
-                        description.isEnabled = false
-                        setDrawGridBackground(false)
-                        setDrawBorders(false)
-                        setTouchEnabled(true)
-                        isDragEnabled = true
-                        isScaleXEnabled = false
-                        isScaleYEnabled = false
-                        legend.isEnabled = true
-                        axisRight.isEnabled = false
-                        axisLeft.apply {
-                            axisMinimum = 0f
-                            setDrawGridLines(true)
-                        }
-                        xAxis.apply {
-                            position = XAxis.XAxisPosition.BOTTOM
-                            setDrawGridLines(false)
-                            granularity = 1f
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                update = { chart ->
-                    // Используем ранее полученный цвет
-
-                    // Sample data for events by hour
-                    val entries = uiState.eventsByHour.mapIndexed { index, count ->
-                        Entry(index.toFloat(), count.toFloat())
-                    }
-
-                    val dataSet = LineDataSet(entries, "Количество событий").apply {
-                        color = secondaryColor
-                        setCircleColor(secondaryColor)
-                        lineWidth = 2f
-                        circleRadius = 3f
-                        setDrawCircleHole(false)
-                        mode = LineDataSet.Mode.CUBIC_BEZIER
-                        setDrawValues(false)
-                        fillColor = secondaryColor
-                        fillAlpha = 50
-                        setDrawFilled(true)
-                    }
-
-                    chart.data = LineData(dataSet)
-                    chart.xAxis.valueFormatter = IndexAxisValueFormatter(
-                        (0..23 step 3).map { "$it:00" }
-                    )
-                    chart.invalidate()
-                }
-            )
-        }
-
         // Recent events table
         Card(
             modifier = Modifier
@@ -1238,7 +1321,7 @@ private fun OverviewAnalyticsContent(
     uiState: AnalyticsUiState
 ) {
     // Получаем все необходимые цвета заранее
-    val colorScheme = MaterialTheme.colorScheme
+    val colorScheme = colorScheme
     val primaryColor = colorScheme.primary.toArgb()
     val secondaryColor = colorScheme.secondary.toArgb()
     val onSurfaceColor = colorScheme.onSurface
@@ -1523,7 +1606,7 @@ private fun AnalyticsSummaryCard(
     mainMetric: String,
     description: String,
     trendValue: Float,
-    trendDescription: String
+    trendDescription: String = "" // делаем параметр опциональным с пустым значением по умолчанию
 ) {
     Card(
         modifier = Modifier
@@ -1602,19 +1685,21 @@ private fun AnalyticsSummaryCard(
                         else -> colorScheme.onSurfaceVariant
                     },
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(start = 4.dp, end = 8.dp)
+                    modifier = Modifier.padding(start = 4.dp, end = if (trendDescription.isNotEmpty()) 8.dp else 0.dp)
                 )
 
-                Text(
-                    text = trendDescription,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.onSurfaceVariant
-                )
+                // Показываем описание тренда только если оно не пустое
+                if (trendDescription.isNotEmpty()) {
+                    Text(
+                        text = trendDescription,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
-
 @Composable
 private fun MetricCard(
     title: String,
@@ -1653,6 +1738,7 @@ private fun MetricCard(
         }
     }
 }
+
 
 @Composable
 private fun ChartCard(
@@ -1949,128 +2035,6 @@ private fun DatePickerContent(
     }
 }
 
-@Composable
-private fun ExportDialog(
-    onExportFormat: (ExportFormat) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Экспорт отчета",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Text(
-                    text = "Выберите формат экспорта:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Export format options
-                ExportFormatOption(
-                    format = ExportFormat.PDF,
-                    title = "PDF документ",
-                    description = "Форматированный отчет с графиками и таблицами",
-                    icon = Icons.Outlined.PictureAsPdf,
-                    onClick = { onExportFormat(ExportFormat.PDF) }
-                )
-
-                ExportFormatOption(
-                    format = ExportFormat.EXCEL,
-                    title = "Excel таблица",
-                    description = "Данные в табличном формате для анализа",
-                    icon = Icons.Outlined.TableChart,
-                    onClick = { onExportFormat(ExportFormat.EXCEL) }
-                )
-
-                ExportFormatOption(
-                    format = ExportFormat.CSV,
-                    title = "CSV файл",
-                    description = "Простые данные через запятую для импорта",
-                    icon = Icons.Outlined.DataObject,
-                    onClick = { onExportFormat(ExportFormat.CSV) }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Cancel button
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("Отмена")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExportFormatOption(
-    format: ExportFormat,
-    title: String,
-    description: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        contentColor = colorScheme.onSurfaceVariant
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = null
-            )
-        }
-    }
-}
 
 enum class AnalyticsTabs(val title: String, val icon: ImageVector) {
     OVERVIEW("Обзор", Icons.Outlined.Dashboard),
@@ -2078,8 +2042,4 @@ enum class AnalyticsTabs(val title: String, val icon: ImageVector) {
     ACHIEVEMENTS("Достижения", Icons.Outlined.EmojiEvents),
     CHILDREN("Дети", Icons.Outlined.People),
     EVENTS("События", Icons.Outlined.Event)
-}
-
-enum class ExportFormat {
-    PDF, EXCEL, CSV
 }
