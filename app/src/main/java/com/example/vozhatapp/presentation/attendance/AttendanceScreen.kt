@@ -592,7 +592,7 @@ private fun StatisticItem(value: String, label: String, color: Color) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AttendanceItem(
     childName: String,
@@ -629,41 +629,53 @@ private fun AttendanceItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Child photo or placeholder
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            // Заменяем Box с clip на BoxWithConstraints для размещения аватара и индикатора
+            BoxWithConstraints(
+                modifier = Modifier.size(50.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (photoUrl != null) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_launcher_foreground),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = childName.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // Фото ребенка с обрезкой только для самого фото
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (photoUrl != null) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = childName.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // Presence indicator
+                // Индикатор присутствия теперь находится вне области обрезки
                 Box(
                     modifier = Modifier
                         .size(18.dp)
                         .align(Alignment.BottomEnd)
+                        .offset(x = 2.dp, y = 2.dp) // Слегка смещаем для лучшего вида
                         .background(
                             color = if (isPresent)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.error,
                             shape = CircleShape
-                        ),
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = CircleShape
+                        ), // Добавляем белую обводку
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -675,7 +687,7 @@ private fun AttendanceItem(
                 }
             }
 
-            // Child info
+            // Остальной код без изменений
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -695,7 +707,6 @@ private fun AttendanceItem(
                 )
             }
 
-            // Note indicator and button
             IconButton(onClick = onAddNoteClick) {
                 Icon(
                     imageVector = if (hasNote) Icons.Filled.Comment else Icons.Outlined.Comment,
@@ -1027,7 +1038,6 @@ private fun FilterDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NoteDialog(
     childName: String,

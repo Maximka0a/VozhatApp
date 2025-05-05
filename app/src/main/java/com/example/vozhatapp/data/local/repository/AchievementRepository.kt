@@ -12,6 +12,19 @@ import javax.inject.Singleton
 class AchievementRepository @Inject constructor(
     private val achievementDao: AchievementDao
 ) {
+    suspend fun getAchievementById(achievementId: Long): Achievement? {
+        return withContext(Dispatchers.IO) {
+            achievementDao.getAchievementById(achievementId)
+        }
+    }
+
+    suspend fun updateAchievement(achievement: Achievement): Long {
+        withContext(Dispatchers.IO) {
+            achievementDao.updateAchievement(achievement)
+        }
+        return achievement.id
+    }
+
     fun getAchievementsForChild(childId: Long): Flow<List<Achievement>> {
         return achievementDao.getAchievementsForChild(childId)
     }
@@ -23,12 +36,6 @@ class AchievementRepository @Inject constructor(
     suspend fun insertAchievement(achievement: Achievement): Long {
         return withContext(Dispatchers.IO) {
             achievementDao.insertAchievement(achievement)
-        }
-    }
-
-    suspend fun updateAchievement(achievement: Achievement) {
-        withContext(Dispatchers.IO) {
-            achievementDao.updateAchievement(achievement)
         }
     }
 

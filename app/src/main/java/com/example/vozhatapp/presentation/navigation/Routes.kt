@@ -14,7 +14,10 @@ object Events
 data class EventDetail(val eventId: Long)
 
 @Serializable
-data class EventEdit(val eventId: Long = -1L) // -1 means "add new"
+data class EventEdit(
+    val eventId: Long = -1L,
+    val sourceRoute: String = "events"
+)
 
 // Children routes
 @Serializable
@@ -66,6 +69,8 @@ data class GameEdit(val gameId: Long = -1L)
 @Serializable
 object Profile
 
-// Achievement route
 @Serializable
-data class AddAchievement(val childId: Long)
+data class AddAchievement(val childId: Long, val achievementId: Long = -1L)
+
+@Serializable
+data class AchievementDetail(val achievementId: Long)

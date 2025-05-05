@@ -14,6 +14,7 @@ fun EventEditTopAppBar(
     onNavigateBack: () -> Unit,
     onSave: () -> Unit,
     isValid: Boolean,
+    sourceIndicator: String? = null,
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     LargeTopAppBar(

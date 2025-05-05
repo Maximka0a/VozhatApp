@@ -22,6 +22,7 @@ fun ChildProfileScreen(
     onEditChild: (Long) -> Unit,
     onAddAchievement: (Long) -> Unit,
     onAddNote: (Long) -> Unit,
+    onNavigateToAchievementDetail: (Long) -> Unit,
     viewModel: ChildProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -138,7 +139,8 @@ fun ChildProfileScreen(
                                 when (page) {
                                     0 -> AchievementsTab(
                                         achievements = uiState.achievements,
-                                        onAchievementClick = viewModel::showAchievementDetails
+                                        onAchievementClick = viewModel::showAchievementDetails,
+                                        onNavigateToAchievementDetail = onNavigateToAchievementDetail // Используем новый параметр
                                     )
                                     1 -> AttendanceTab(
                                         attendance = uiState.attendance,

@@ -4,13 +4,33 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -20,7 +40,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.vozhatapp.R
-import com.example.vozhatapp.presentation.children.edit.components.*
+import com.example.vozhatapp.presentation.children.edit.components.AddSquadDialog
+import com.example.vozhatapp.presentation.children.edit.components.BasicInfoFormSection
+import com.example.vozhatapp.presentation.children.edit.components.ChildEditTopAppBar
+import com.example.vozhatapp.presentation.children.edit.components.ContactInfoFormSection
+import com.example.vozhatapp.presentation.children.edit.components.DeleteChildConfirmDialog
+import com.example.vozhatapp.presentation.children.edit.components.FormButtonsSection
+import com.example.vozhatapp.presentation.children.edit.components.MedicalNotesFormSection
+import com.example.vozhatapp.presentation.children.edit.components.PhotoSelectionSection
+import com.example.vozhatapp.presentation.children.edit.components.rememberChildFormFocusRequesters
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -34,7 +62,9 @@ fun AddChildScreen(
     childId: Long? = null,
     viewModel: AddChildViewModel = hiltViewModel()
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // Используем pinnedScrollBehavior для статичного TopAppBar с возможностью прокрутки контента
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -173,6 +203,7 @@ fun AddChildScreen(
     val isEditMode = state.id != null
 
     Scaffold(
+        // Возвращаем nestedScroll для поддержки прокрутки
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             ChildEditTopAppBar(
@@ -180,6 +211,7 @@ fun AddChildScreen(
                 isFormValid = isFormValid,
                 onNavigateBack = onNavigateBack,
                 onSave = { viewModel.onEvent(AddChildEvent.SaveChild) },
+                // Передаем scrollBehavior для правильной работы прокрутки
                 scrollBehavior = scrollBehavior
             )
         },
@@ -201,7 +233,7 @@ fun AddChildScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(scrollState)
+                        .verticalScroll(scrollState) // Этот модификатор правильно работает
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp)
                         .animateContentSize()

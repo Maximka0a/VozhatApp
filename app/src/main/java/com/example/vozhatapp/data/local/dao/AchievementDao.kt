@@ -9,8 +9,9 @@ interface AchievementDao {
     @Query("SELECT * FROM achievements WHERE child_id = :childId ORDER BY date DESC")
     fun getAchievementsForChild(childId: Long): Flow<List<Achievement>>
 
+    @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH) // Добавляем это для подавления предупреждения
     @Query("""
-    SELECT c.id, c.name, c.lastName, c.squadName, c.photo_url, SUM(a.points) as totalPoints 
+    SELECT c.id, c.name, c.lastName, c.squadName, c.photo_url as photoUrl, SUM(a.points) as totalPoints 
         FROM children c
         LEFT JOIN achievements a ON c.id = a.child_id
         GROUP BY c.id
@@ -20,6 +21,9 @@ interface AchievementDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAchievement(achievement: Achievement): Long
+
+    @Query("SELECT * FROM achievements WHERE id = :achievementId LIMIT 1")
+    suspend fun getAchievementById(achievementId: Long): Achievement?
 
     @Update
     suspend fun updateAchievement(achievement: Achievement)
@@ -33,6 +37,6 @@ interface AchievementDao {
         val lastName: String,
         val squadName: String,
         val totalPoints: Int?,
-        val photoUrl: String? // Добавленное поле
+        val photoUrl: String? // Поле должно соответствовать имени в запросе
     )
 }

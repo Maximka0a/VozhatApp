@@ -7,6 +7,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.example.vozhatapp.presentation.achievements.detail.AchievementDetailScreen
+import com.example.vozhatapp.presentation.achievements.edit.AchievementEditScreen
 import com.example.vozhatapp.presentation.analytics.AnalyticsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceReportsScreen
 import com.example.vozhatapp.presentation.attendance.AttendanceScreen
@@ -44,14 +46,17 @@ fun AppNavHost(navController: NavHostController) {
                     navController.navigate(EventDetail(eventId))
                 },
                 onNavigateToAnalytics = { navController.navigate("analytics") },
-                // Новые параметры
                 onNavigateToSettings = { navController.navigate("settings") },
-                onCreateNewEvent = { navController.navigate(EventEdit()) },
                 onNavigateToNoteDetails = { noteId ->
                     navController.navigate(NoteDetail(noteId))
                 },
+                // Обновленная функция создания события
+                onCreateNewEvent = { sourceRoute ->
+                    navController.navigate(EventEdit(sourceRoute = sourceRoute))
+                }
             )
         }
+
 
         // ===== EVENTS NAVIGATION =====
         composable<Events> {
@@ -59,12 +64,12 @@ fun AppNavHost(navController: NavHostController) {
                 onEventClick = { eventId ->
                     navController.navigate(EventDetail(eventId))
                 },
-                onCreateEvent = {
-                    navController.navigate(EventEdit())
+                // Обновленная функция создания события
+                onCreateEvent = { sourceRoute ->
+                    navController.navigate(EventEdit(sourceRoute = sourceRoute))
                 }
             )
         }
-
         composable<EventDetail> { backStackEntry ->
             val eventData = backStackEntry.toRoute<EventDetail>()
             EventDetailScreen(
@@ -78,10 +83,27 @@ fun AppNavHost(navController: NavHostController) {
             val eventData = backStackEntry.toRoute<EventEdit>()
             EventEditScreen(
                 eventId = if (eventData.eventId == -1L) null else eventData.eventId,
+                sourceRoute = eventData.sourceRoute,
                 onNavigateBack = { navController.popBackStack() },
                 onEventSaved = { savedEventId: Long ->
-                    navController.navigate(EventDetail(savedEventId)) {
-                        popUpTo(Events) {}
+                    // Умная навигация в зависимости от источника
+                    when (eventData.sourceRoute) {
+                        "home" -> {
+                            // Если создавали с главной страницы, сразу возвращаемся на главную
+                            navController.navigate(Home) {
+                                // Очищаем стек навигации до Home (включительно)
+                                // и добавляем Home заново
+                                popUpTo(Home) {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                        else -> {
+                            // Стандартная навигация к деталям события
+                            navController.navigate(EventDetail(savedEventId)) {
+                                popUpTo(Events) { }
+                            }
+                        }
                     }
                 }
             )
@@ -102,7 +124,35 @@ fun AppNavHost(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onEditChild = { childId -> navController.navigate(AddChild(childId)) },
                 onAddAchievement = { childId -> navController.navigate(AddAchievement(childId)) },
-                onAddNote = { childId -> navController.navigate(AddNote(childId)) }
+                onAddNote = { childId -> navController.navigate(AddNote(childId)) },
+                onNavigateToAchievementDetail = { achievementId ->
+                    navController.navigate(AchievementDetail(achievementId))
+                }
+            )
+        }
+
+        composable<AddAchievement> { backStackEntry ->
+            val achievementData = backStackEntry.toRoute<AddAchievement>()
+            AchievementEditScreen(
+                childId = achievementData.childId,
+                achievementId = if (achievementData.achievementId == -1L) null else achievementData.achievementId,
+                onNavigateBack = { navController.popBackStack() },
+                onAchievementSaved = { achievementId ->
+                    navController.navigate(ChildDetail(achievementData.childId)) {
+                        popUpTo(Children) {}
+                    }
+                }
+            )
+        }
+
+        composable<AchievementDetail> { backStackEntry ->
+            val achievementData = backStackEntry.toRoute<AchievementDetail>()
+            AchievementDetailScreen(
+                achievementId = achievementData.achievementId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { achievementId, childId ->
+                    navController.navigate(AddAchievement(childId, achievementId))
+                }
             )
         }
 

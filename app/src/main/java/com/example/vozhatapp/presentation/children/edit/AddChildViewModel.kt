@@ -20,6 +20,17 @@ class AddChildViewModel @Inject constructor(
     private val childRepository: ChildRepository
 ) : ViewModel() {
 
+    // Константы с ограничениями по длине полей
+    companion object {
+        const val MAX_NAME_LENGTH = 30
+        const val MAX_LASTNAME_LENGTH = 30
+        const val MAX_SQUADNAME_LENGTH = 50
+        const val MAX_PHONE_LENGTH = 20
+        const val MAX_EMAIL_LENGTH = 50
+        const val MAX_ADDRESS_LENGTH = 100
+        const val MAX_MEDICAL_NOTES_LENGTH = 500
+    }
+
     private val _state = MutableStateFlow(AddChildState())
     val state: StateFlow<AddChildState> = _state.asStateFlow()
 
@@ -59,47 +70,69 @@ class AddChildViewModel @Inject constructor(
     fun onEvent(event: AddChildEvent) {
         when (event) {
             is AddChildEvent.NameChanged -> {
-                _state.update { it.copy(
-                    name = event.value,
-                    nameError = null
-                ) }
+                _state.update {
+                    it.copy(
+                        name = event.value.take(MAX_NAME_LENGTH),
+                        nameError = null
+                    )
+                }
             }
             is AddChildEvent.LastNameChanged -> {
-                _state.update { it.copy(
-                    lastName = event.value,
-                    lastNameError = null
-                ) }
+                _state.update {
+                    it.copy(
+                        lastName = event.value.take(MAX_LASTNAME_LENGTH),
+                        lastNameError = null
+                    )
+                }
             }
             is AddChildEvent.AgeChanged -> {
-                val age = event.value.toIntOrNull() ?: 0
-                _state.update { it.copy(
-                    age = age,
-                    ageError = null
-                ) }
+                // Для возраста ограничиваем ввод двумя цифрами (дети до 99 лет)
+                val ageString = event.value.filter { it.isDigit() }.take(2)
+                val age = ageString.toIntOrNull() ?: 0
+                _state.update {
+                    it.copy(
+                        age = age,
+                        ageError = null
+                    )
+                }
             }
             is AddChildEvent.SquadNameChanged -> {
-                _state.update { it.copy(
-                    squadName = event.value,
-                    squadNameError = null
-                ) }
+                _state.update {
+                    it.copy(
+                        squadName = event.value.take(MAX_SQUADNAME_LENGTH),
+                        squadNameError = null
+                    )
+                }
             }
             is AddChildEvent.ParentPhoneChanged -> {
-                _state.update { it.copy(
-                    parentPhone = event.value,
-                    parentPhoneError = null
-                ) }
+                _state.update {
+                    it.copy(
+                        parentPhone = event.value.take(MAX_PHONE_LENGTH),
+                        parentPhoneError = null
+                    )
+                }
             }
             is AddChildEvent.ParentEmailChanged -> {
-                _state.update { it.copy(
-                    parentEmail = event.value,
-                    parentEmailError = null
-                ) }
+                _state.update {
+                    it.copy(
+                        parentEmail = event.value.take(MAX_EMAIL_LENGTH),
+                        parentEmailError = null
+                    )
+                }
             }
             is AddChildEvent.AddressChanged -> {
-                _state.update { it.copy(address = event.value) }
+                _state.update {
+                    it.copy(
+                        address = event.value.take(MAX_ADDRESS_LENGTH)
+                    )
+                }
             }
             is AddChildEvent.MedicalNotesChanged -> {
-                _state.update { it.copy(medicalNotes = event.value) }
+                _state.update {
+                    it.copy(
+                        medicalNotes = event.value.take(MAX_MEDICAL_NOTES_LENGTH)
+                    )
+                }
             }
             is AddChildEvent.PhotoUrlChanged -> {
                 _state.update { it.copy(photoUrl = event.value) }
@@ -249,7 +282,7 @@ class AddChildViewModel @Inject constructor(
         return ValidationResult(true)
     }
 
-    // Validation functions
+    // Validation functions with added length checks
 
     private fun validateName(name: String): ValidationResult {
         if (name.isBlank()) {
@@ -263,6 +296,13 @@ class AddChildViewModel @Inject constructor(
             return ValidationResult(
                 successful = false,
                 errorMessage = "Имя должно содержать хотя бы 2 символа"
+            )
+        }
+
+        if (name.length > MAX_NAME_LENGTH) {
+            return ValidationResult(
+                successful = false,
+                errorMessage = "Имя не может быть длиннее $MAX_NAME_LENGTH символов"
             )
         }
 
@@ -281,6 +321,13 @@ class AddChildViewModel @Inject constructor(
             return ValidationResult(
                 successful = false,
                 errorMessage = "Фамилия должна содержать хотя бы 2 символа"
+            )
+        }
+
+        if (lastName.length > MAX_LASTNAME_LENGTH) {
+            return ValidationResult(
+                successful = false,
+                errorMessage = "Фамилия не может быть длиннее $MAX_LASTNAME_LENGTH символов"
             )
         }
 
@@ -313,12 +360,26 @@ class AddChildViewModel @Inject constructor(
             )
         }
 
+        if (squadName.length > MAX_SQUADNAME_LENGTH) {
+            return ValidationResult(
+                successful = false,
+                errorMessage = "Название отряда не может быть длиннее $MAX_SQUADNAME_LENGTH символов"
+            )
+        }
+
         return ValidationResult(successful = true)
     }
 
     private fun validatePhone(phone: String?): ValidationResult {
         if (phone.isNullOrBlank()) {
             return ValidationResult(successful = true)  // Phone is optional if email provided
+        }
+
+        if (phone.length > MAX_PHONE_LENGTH) {
+            return ValidationResult(
+                successful = false,
+                errorMessage = "Телефон не может быть длиннее $MAX_PHONE_LENGTH символов"
+            )
         }
 
         // Validate phone number format
@@ -336,6 +397,13 @@ class AddChildViewModel @Inject constructor(
     private fun validateEmail(email: String?): ValidationResult {
         if (email.isNullOrBlank()) {
             return ValidationResult(successful = true)  // Email is optional if phone provided
+        }
+
+        if (email.length > MAX_EMAIL_LENGTH) {
+            return ValidationResult(
+                successful = false,
+                errorMessage = "Email не может быть длиннее $MAX_EMAIL_LENGTH символов"
+            )
         }
 
         // Validate email format

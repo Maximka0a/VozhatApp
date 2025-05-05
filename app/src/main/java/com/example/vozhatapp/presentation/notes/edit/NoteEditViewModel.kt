@@ -165,6 +165,17 @@ class NoteEditViewModel @Inject constructor(
     }
 
     fun setReminderDate(date: Long) {
+        val currentTime = System.currentTimeMillis()
+
+        // Проверяем, что дата напоминания находится в будущем
+        if (date <= currentTime) {
+            _uiState.update { it.copy(
+                message = "Нельзя установить напоминание на прошедшую дату и время",
+                showDatePicker = false
+            ) }
+            return
+        }
+
         _uiState.update { it.copy(
             reminderDate = date,
             showDatePicker = false, // Закрываем диалог при выборе даты
@@ -193,11 +204,22 @@ class NoteEditViewModel @Inject constructor(
                 }
 
                 // If it's a reminder, validate reminder date
-                if (state.noteType == 1 && state.reminderDate == null) {
-                    _uiState.update { it.copy(
-                        message = "Для напоминания необходимо указать дату"
-                    ) }
-                    return@launch
+                if (state.noteType == 1) {
+                    if (state.reminderDate == null) {
+                        _uiState.update { it.copy(
+                            message = "Для напоминания необходимо указать дату"
+                        ) }
+                        return@launch
+                    }
+
+                    // Дополнительная проверка даты напоминания перед сохранением
+                    val currentTime = System.currentTimeMillis()
+                    if (state.reminderDate <= currentTime) {
+                        _uiState.update { it.copy(
+                            message = "Нельзя установить напоминание на прошедшую дату и время"
+                        ) }
+                        return@launch
+                    }
                 }
 
                 val note = Note(
@@ -218,6 +240,7 @@ class NoteEditViewModel @Inject constructor(
                 }
 
                 _uiState.update { it.copy(
+                    noteId = resultId,
                     message = "Заметка сохранена",
                     noteSaved = true, // Устанавливаем флаг для навигации назад
                     hasChanges = false

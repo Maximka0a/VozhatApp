@@ -26,8 +26,8 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToChildDetails: (Long) -> Unit,
     onNavigateToEventDetails: (Long) -> Unit,
-    onNavigateToNoteDetails: (Long) -> Unit,  // Добавлен новый параметр
-    onCreateNewEvent: () -> Unit,
+    onNavigateToNoteDetails: (Long) -> Unit,
+    onCreateNewEvent: (sourceRoute: String) -> Unit, // Обновленная сигнатура с параметром источника
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -44,7 +44,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { onCreateNewEvent() },
+                onClick = { onCreateNewEvent("home") }, // Передаем "home" как источник
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = { Text("Создать событие") },
                 expanded = scrollBehavior.state.collapsedFraction < 0.5
@@ -63,7 +63,7 @@ fun HomeScreen(
             onNavigateToAnalytics = onNavigateToAnalytics,
             onNavigateToChildDetails = onNavigateToChildDetails,
             onNavigateToEventDetails = onNavigateToEventDetails,
-            onNavigateToNoteDetails = onNavigateToNoteDetails  // Передаем навигацию
+            onNavigateToNoteDetails = onNavigateToNoteDetails
         )
 
         // Показываем сообщение об ошибке, если оно есть

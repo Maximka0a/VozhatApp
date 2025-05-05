@@ -1,6 +1,8 @@
 package com.example.vozhatapp.presentation.childprofile.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -27,6 +29,7 @@ import java.time.format.DateTimeFormatter
 fun AchievementsTab(
     achievements: List<Achievement>,
     onAchievementClick: (Achievement) -> Unit,
+    onNavigateToAchievementDetail: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (achievements.isEmpty()) {
@@ -45,17 +48,18 @@ fun AchievementsTab(
             ) { achievement ->
                 AchievementCard(
                     achievement = achievement,
-                    onClick = { onAchievementClick(achievement) }
+                    onLongClick = { onNavigateToAchievementDetail(achievement.id) }
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AchievementCard(
     achievement: Achievement,
-    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
@@ -71,7 +75,9 @@ fun AchievementCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(
+                onClick = onLongClick,
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {

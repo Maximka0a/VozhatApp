@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun EventsScreen(
     onEventClick: (Long) -> Unit,
-    onCreateEvent: () -> Unit,
+    onCreateEvent: (sourceRoute: String) -> Unit,
     viewModel: EventsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,7 +86,7 @@ fun EventsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onCreateEvent,
+                onClick = { onCreateEvent("events") },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {

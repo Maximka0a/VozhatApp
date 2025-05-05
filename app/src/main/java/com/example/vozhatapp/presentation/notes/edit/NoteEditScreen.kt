@@ -71,7 +71,8 @@ fun NoteEditScreen(
                     viewModel.saveNote()
                 },
                 isSaveEnabled = state.title.isNotBlank() && state.content.isNotBlank() &&
-                        (state.noteType != 1 || state.reminderDate != null)
+                        (state.noteType != 1 ||
+                                state.reminderDate?.let { it > System.currentTimeMillis() } == true)
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }

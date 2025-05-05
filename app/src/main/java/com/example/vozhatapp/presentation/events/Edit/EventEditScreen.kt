@@ -32,6 +32,7 @@ import com.example.vozhatapp.presentation.events.components.EventEditTopAppBar
 @Composable
 fun EventEditScreen(
     eventId: Long? = null,
+    sourceRoute: String = "events",
     onNavigateBack: () -> Unit,
     onEventSaved: (Long) -> Unit,
     viewModel: EventEditViewModel = hiltViewModel()
@@ -43,6 +44,7 @@ fun EventEditScreen(
 
     // Determine if we're in edit or add mode
     val isEditMode = eventId != null
+    val isFromHome = sourceRoute == "home"
     val screenTitle = if (isEditMode) "Редактирование события" else "Новое событие"
 
     // Load event data if in edit mode
@@ -53,6 +55,7 @@ fun EventEditScreen(
             viewModel.initializeNewEvent()
         }
     }
+
 
     // Handle success message
     LaunchedEffect(uiState.savedEventId) {
@@ -96,6 +99,7 @@ fun EventEditScreen(
                     viewModel.saveEvent()
                 },
                 isValid = uiState.isValid,
+                sourceIndicator = if (isFromHome) "Главная" else null, // Добавляем индикатор источника
                 scrollBehavior = scrollBehavior
             )
         },

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.vozhatapp.R
+import com.example.vozhatapp.presentation.children.edit.AddChildViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +70,22 @@ fun BasicInfoFormSection(
                 onNext = { focusRequesters.lastNameFocusRequester.requestFocus() }
             ),
             isError = nameError != null,
-            supportingText = { nameError?.let { Text(it) } },
+            supportingText = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    nameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Text(
+                        "${name.length}/${AddChildViewModel.MAX_NAME_LENGTH}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (name.length >= AddChildViewModel.MAX_NAME_LENGTH)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
             singleLine = true
         )
 
@@ -96,11 +112,26 @@ fun BasicInfoFormSection(
                 onNext = { focusRequesters.ageFocusRequester.requestFocus() }
             ),
             isError = lastNameError != null,
-            supportingText = { lastNameError?.let { Text(it) } },
+            supportingText = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    lastNameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Text(
+                        "${lastName.length}/${AddChildViewModel.MAX_LASTNAME_LENGTH}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (lastName.length >= AddChildViewModel.MAX_LASTNAME_LENGTH)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
             singleLine = true
         )
 
-        // Age field
+        // Age field (оставляем как есть, т.к. возраст ограничен числом)
         OutlinedTextField(
             value = if (age > 0) age.toString() else "",
             onValueChange = onAgeChange,
@@ -154,35 +185,52 @@ fun BasicInfoFormSection(
                     )
                 },
                 isError = squadNameError != null,
-                supportingText = { squadNameError?.let { Text(it) } },
+                supportingText = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        squadNameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        Text(
+                            "${squadName.length}/${AddChildViewModel.MAX_SQUADNAME_LENGTH}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (squadName.length >= AddChildViewModel.MAX_SQUADNAME_LENGTH)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 singleLine = true,
-                readOnly = true,
+                readOnly = false, // Разрешаем ручной ввод названия отряда
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
             )
 
-            ExposedDropdownMenu(
-                expanded = isSquadMenuExpanded,
-                onDismissRequest = { onSquadMenuExpandedChange(false) }
-            ) {
-                squadNames.forEach { option ->
+            if (isSquadMenuExpanded) {
+                ExposedDropdownMenu(
+                    expanded = isSquadMenuExpanded,
+                    onDismissRequest = { onSquadMenuExpandedChange(false) }
+                ) {
+                    squadNames.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                onSquadNameChange(option)
+                                onSquadMenuExpandedChange(false)
+                            }
+                        )
+                    }
+
+                    // Add new squad option
+                    HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            onSquadNameChange(option)
-                            onSquadMenuExpandedChange(false)
-                        }
+                        text = { Text(stringResource(R.string.add_new_squad)) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                        },
+                        onClick = onAddNewSquad
                     )
                 }
-
-                // Add new squad option
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.add_new_squad)) },
-                    leadingIcon = {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                    },
-                    onClick = onAddNewSquad
-                )
             }
         }
     }
